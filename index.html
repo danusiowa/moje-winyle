@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FDFBF8">
+<title>VinyLog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap">
+<style>
+:root{
+  --bg:#FDFBF8; --surface:#FFFFFF; --line:#ECE6DC; --sunk:#F2EEE7;
+  --ink:#2E2F33; --muted:#6E6A64; --vinyl:#1B1B1D; --label:#F3E7CF;
+  --ochre:#D9A032; --ochre-ink:#8F6413; --ochre-soft:#FBF1DC;
+  --pink:#E07A8C;  --pink-ink:#A8394F;  --pink-soft:#FBE8EC;
+  --teal:#2E9C95;  --teal-ink:#1D6E69;  --teal-soft:#E3F3F1;
+  --danger:#B4233C; --danger-soft:#FBE3E6;
+  --display:'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --sans:'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --nav-h:68px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+img{max-width:100%}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- typografia ---------- */
+.display{font-family:var(--display);font-weight:800;letter-spacing:-.035em;line-height:1.02;margin:0}
+.sub{margin:0;color:var(--muted);font-size:15px}
+
+/* ---------- przyciski i pola ---------- */
+.btn{min-height:52px;padding:0 24px;border:0;border-radius:26px;background:var(--ink);color:#fff;font-weight:700;font-size:16px;box-shadow:3px 3px 0 var(--ochre);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .12s ease,box-shadow .12s ease}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ochre)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn-ghost{min-height:50px;padding:0 20px;border:1.5px solid var(--ink);border-radius:25px;background:transparent;font-weight:700;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-danger{min-height:50px;padding:0 20px;border:0;border-radius:25px;background:var(--danger);color:#fff;font-weight:700}
+.link{background:none;border:0;padding:8px 0;color:var(--muted);font-weight:500;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.field .lbl{font-size:14px;font-weight:700}
+.input{width:100%;min-height:50px;padding:0 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);font-size:16px}
+.input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
+.input::placeholder{color:#9A958D}
+.hint{font-size:13px;color:var(--muted)}
+.form-error{font-size:14px;color:var(--danger);min-height:20px}
+.icon{width:22px;height:22px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- ekrany autoryzacji ---------- */
+.auth{min-height:100svh;display:grid;place-items:center;padding:40px 24px calc(28px + env(safe-area-inset-bottom))}
+.auth-card{width:min(400px,100%);display:flex;flex-direction:column;gap:30px}
+.auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.auth-brand .logo{width:112px;height:112px}
+.auth-brand h1{font-size:40px;margin-top:4px}
+.auth-brand .lead{margin:0;font-weight:500}
+.auth-brand .sub{max-width:280px}
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-form .btn{margin-top:6px}
+.auth-foot{text-align:center;display:flex;flex-direction:column;gap:2px}
+.auth-foot .hint{font-size:13px}
+
+/* ---------- układ aplikacji ---------- */
+.topbar{position:sticky;top:0;z-index:20;background:rgba(253,251,248,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.topbar-in{max-width:1440px;margin:0 auto;padding:0 48px;min-height:92px;display:flex;align-items:center;gap:48px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand .logo{width:56px;height:56px}
+.brand span{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.04em}
+.tabs{display:flex;gap:32px;align-self:stretch}
+.tab{background:none;border:0;border-bottom:4px solid transparent;padding:0 4px;font-weight:500;color:var(--muted);font-size:19px}
+.tab[aria-current="page"]{color:var(--ink);font-weight:700}
+.tab[data-view="owned"][aria-current="page"]{border-color:var(--ochre)}
+.tab[data-view="wanted"][aria-current="page"]{border-color:var(--pink)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:12px}
+.top-actions .btn{min-height:52px;padding:0 26px;font-size:17px}
+.logout{background:none;border:0;min-height:52px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:500;font-size:17px}
+.main{max-width:1440px;margin:0 auto;padding:48px 48px 72px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-bottom:40px}
+.head h2{font-size:60px;display:flex;align-items:center;gap:14px}
+.head h2 .icon{width:40px;height:40px;color:var(--pink)}
+.head .sub{margin-top:14px;font-size:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.count{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border-radius:99px;background:var(--ochre-soft);color:var(--ink);font-weight:800;font-size:18px}
+.count.wanted{background:var(--pink-soft)}
+.search{position:relative;width:420px;max-width:100%}
+.search .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted);pointer-events:none}
+.search .input{padding-left:44px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:40px 28px}
+.card{display:flex;flex-direction:column;gap:8px;min-width:0}
+.card-hit{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;text-align:left;min-width:0;border-radius:12px}
+.cover{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--sunk)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.card-hit:hover .cover img{filter:brightness(.96)}
+.meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+.meta b,.meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta b{font-size:17px}
+.meta span{font-size:15px;color:var(--muted)}
+.have{align-self:flex-start;min-height:40px;padding:0 16px;border:1.5px solid var(--ink);border-radius:20px;background:transparent;font-weight:700;font-size:14px}
+.have:hover{background:var(--pink-soft)}
+.bottomnav{display:none}
+
+/* okładki zastępcze */
+.ph{position:absolute;inset:0}
+.ph i{position:absolute;display:block}
+.ph-0{background:var(--teal)} .ph-0 i{width:70%;aspect-ratio:1;border-radius:50%;background:var(--vinyl);left:15%;top:15%} .ph-0 i+i{width:22%;background:var(--label);left:39%;top:39%}
+.ph-1{background:var(--ochre)} .ph-1 i{left:14%;right:14%;height:9%;border-radius:99px;background:var(--pink);bottom:44%} .ph-1 i+i{right:34%;bottom:29%} .ph-1 i+i+i{right:54%;bottom:14%;background:var(--vinyl)}
+.ph-2{background:var(--pink)} .ph-2 i{width:90%;aspect-ratio:1;border-radius:50%;background:var(--vinyl);left:5%;top:50%} .ph-2 i+i{width:18%;background:var(--ochre);left:auto;right:14%;top:14%}
+.ph-3{background:var(--vinyl)} .ph-3 i{bottom:14%;width:18%;border-radius:99px;background:var(--ochre);left:16%;height:72%} .ph-3 i+i{left:41%;height:52%;background:var(--pink)} .ph-3 i+i+i{left:66%;height:32%;background:var(--teal)}
+
+/* puste stany */
+.empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:56px 24px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.empty .badge{width:56px;height:56px;border-radius:28px;display:grid;place-items:center}
+.empty .badge .icon{width:28px;height:28px}
+.empty strong{font-family:var(--display);font-weight:800;font-size:22px;margin-top:6px}
+.empty span{color:var(--muted);font-size:15px;max-width:320px}
+.empty .btn{margin-top:10px;min-height:48px}
+.b-ochre{background:var(--ochre-soft);color:var(--ochre-ink)} .b-pink{background:var(--pink-soft);color:var(--pink-ink)}
+.b-teal{background:var(--teal-soft);color:var(--teal-ink)} .b-grey{background:var(--sunk);color:var(--muted)} .b-danger{background:var(--danger-soft);color:var(--danger)}
+
+/* ---------- dialogi ---------- */
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:22px;width:min(520px,calc(100vw - 32px));max-height:calc(100svh - 32px);box-shadow:0 24px 70px rgba(30,28,25,.25)}
+dialog::backdrop{background:rgba(46,47,51,.45)}
+.sheet{padding:26px;display:flex;flex-direction:column;gap:16px}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.sheet-head h2{font-size:30px}
+.close{width:44px;height:44px;flex-shrink:0;border:0;border-radius:22px;background:var(--sunk);display:grid;place-items:center}
+.scan-tile{display:flex;align-items:center;gap:14px;padding:16px;border:0;border-radius:16px;background:var(--teal-soft);text-align:left;width:100%}
+.scan-tile .ic{width:48px;height:48px;border-radius:14px;background:var(--teal);color:#fff;display:grid;place-items:center;flex-shrink:0}
+.scan-tile .ic .icon{width:26px;height:26px}
+.scan-tile b{display:block;font-size:16px}
+.scan-tile span{font-size:14px;color:var(--muted)}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.seg{display:flex;gap:4px;padding:4px;border-radius:13px;background:var(--sunk)}
+.seg button{flex:1 1 0;min-height:44px;border:0;border-radius:10px;background:transparent;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(46,47,51,.15)}
+.cover-preview{width:96px;border-radius:10px;aspect-ratio:1;object-fit:cover;border:1px solid var(--line)}
+.notice{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ochre-soft)}
+.notice .icon{color:var(--ochre-ink)}
+.notice b{display:block}
+.notice span{font-size:14px;color:var(--muted)}
+.sheet-actions{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.sheet-actions .link{align-self:center}
+.confirm{width:min(360px,calc(100vw - 32px))}
+.confirm .sheet{gap:8px}
+.confirm h2{font-size:24px}
+.confirm .row{display:flex;gap:10px;margin-top:14px}
+.confirm .row>*{flex:1 1 0}
+
+/* ---------- skaner ---------- */
+.scanner{position:fixed;inset:0;z-index:60;background:#232427;color:#fff;display:flex;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom))}
+.scanner-top{display:flex;align-items:center;justify-content:space-between;max-width:560px;width:100%;margin:0 auto}
+.scanner-top b{font-size:16px}
+.scanner .close{background:rgba(255,255,255,.12);color:#fff}
+.scanner-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;max-width:560px;width:100%;margin:0 auto;overflow:auto;padding:12px 0}
+.viewfinder{position:relative;width:min(320px,86vw);aspect-ratio:3/2;border-radius:18px;overflow:hidden;background:#111214}
+.viewfinder video{width:100%;height:100%;object-fit:cover;display:block}
+.viewfinder .c{position:absolute;width:34px;height:34px;border:0 solid var(--teal)}
+.c.tl{left:0;top:0;border-top-width:4px;border-left-width:4px;border-top-left-radius:18px}
+.c.tr{right:0;top:0;border-top-width:4px;border-right-width:4px;border-top-right-radius:18px}
+.c.bl{left:0;bottom:0;border-bottom-width:4px;border-left-width:4px;border-bottom-left-radius:18px}
+.c.br{right:0;bottom:0;border-bottom-width:4px;border-right-width:4px;border-bottom-right-radius:18px}
+.viewfinder .beam{position:absolute;left:24px;right:24px;top:50%;height:2px;background:var(--pink);box-shadow:0 0 12px var(--pink);animation:beam 2.2s ease-in-out infinite}
+@keyframes beam{0%,100%{transform:translateY(-38px)}50%{transform:translateY(38px)}}
+.scan-msg b{display:block;font-size:17px}
+.scan-msg span{font-size:14px;color:#C9C5BE}
+.manual-code{display:flex;gap:8px;width:min(320px,86vw)}
+.manual-code .input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#fff;letter-spacing:.06em}
+.manual-code .input::placeholder{color:#9E9A93;letter-spacing:0}
+.manual-code button{min-height:50px;padding:0 16px;border-radius:12px;border:0;background:var(--teal);color:#fff;font-weight:700}
+.scanner .btn-ghost{color:#fff;border-color:rgba(255,255,255,.6);width:100%;max-width:560px;margin:0 auto}
+.found{background:var(--bg);color:var(--ink)}
+.found .scanner-top b{color:var(--ink)}
+.found .close{background:var(--sunk);color:var(--ink)}
+.found .scanner-body{justify-content:flex-start;text-align:left;align-items:stretch}
+.pill{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--teal-soft);color:var(--teal-ink);font-size:13px;font-weight:700}
+.pill .icon{width:14px;height:14px}
+.record{position:relative;height:230px;flex-shrink:0}
+.record .disc{position:absolute;left:92px;top:12px;width:206px;height:206px;border-radius:50%;background:var(--vinyl);display:grid;place-items:center}
+.record .disc::after{content:"";width:62px;height:62px;border-radius:50%;background:var(--label)}
+.record .cover{position:absolute;left:0;top:0;width:230px}
+.facts{display:flex;flex-direction:column;gap:10px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.facts small{display:block;font-size:13px;color:var(--muted)}
+.facts b{font-size:17px}
+.facts .src{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.facts .src a{color:var(--muted)}
+
+/* ---------- loader ---------- */
+.loader{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(253,251,248,.72);backdrop-filter:blur(3px)}
+.loader-box{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:280px;padding:0 20px}
+.loader-box p{margin:0;font-size:14px;color:var(--muted);opacity:0;transition:opacity .25s ease}
+.loader.long .loader-box p{opacity:1}
+.spin{width:56px;height:56px;animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- toasty ---------- */
+.toasts{position:fixed;right:24px;bottom:24px;z-index:100;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 32px));pointer-events:none}
+.toast{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 26px rgba(46,47,51,.14);pointer-events:auto;animation:toastIn .22s ease}
+.toast.out{opacity:0;transform:translateY(8px);transition:.2s ease}
+.toast .badge{width:32px;height:32px;border-radius:16px;display:grid;place-items:center;flex-shrink:0}
+.toast .badge .icon{width:18px;height:18px}
+.toast b{display:block;font-size:15px}
+.toast span{display:block;font-size:14px;color:var(--muted);line-height:1.35}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}}
+
+/* ---------- mobile ---------- */
+@media (max-width:760px){
+  .topbar-in{padding:0 12px 0 20px;min-height:60px;gap:12px}
+  .brand .logo{width:38px;height:38px}
+  .brand span{font-size:23px}
+  .tabs,.top-actions .btn,.logout span{display:none}
+  .main{padding:18px 20px calc(var(--nav-h) + 32px + env(safe-area-inset-bottom))}
+  .head{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:18px}
+  .head h2{font-size:34px}
+  .head h2 .icon{width:28px;height:28px}
+  .head .sub{margin-top:8px;font-size:15px}
+  .count{min-height:28px;padding:0 11px;font-size:15px}
+  .meta b{font-size:15px}
+  .meta span{font-size:13px}
+  .search{width:100%}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 14px}
+  .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:4px 8px calc(8px + env(safe-area-inset-bottom))}
+  .bottomnav button{flex:1 1 0;min-height:56px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:500;color:var(--muted)}
+  .bottomnav button::after{content:"";width:18px;height:3px;border-radius:2px;background:transparent}
+  .bottomnav button[aria-current="page"]{color:var(--ink);font-weight:700}
+  .bottomnav button[data-view="owned"][aria-current="page"]::after{background:var(--ochre)}
+  .bottomnav button[data-view="wanted"][aria-current="page"]::after{background:var(--pink)}
+  .toasts{left:16px;right:16px;width:auto;bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom))}
+  .auth-only .toasts,.no-nav .toasts{bottom:calc(16px + env(safe-area-inset-bottom))}
+  dialog{width:100%;max-width:none;max-height:92svh;margin:auto 0 0;border-radius:22px 22px 0 0}
+  dialog.confirm{width:calc(100vw - 32px);margin:auto;border-radius:20px}
+  .sheet{padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
+  .sheet-head h2{font-size:26px}
+}
+@media (max-width:340px){.grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){
+  .spin{animation-duration:6s}
+  .viewfinder .beam{animation:none}
+  .toast{animation:none}
+  .btn{transition:none}
+}
+</style>
+</head>
+<body class="auth-only">
+
+<!-- Ikony i logo: zdefiniowane raz, używane przez <use>. Logo podmieniasz tylko w #logo. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="26 56 500 500">
+    <rect x="300" y="110" width="44" height="380" rx="22" fill="#E07A8C"/>
+    <rect x="370" y="160" width="44" height="280" rx="22" fill="#D9A032"/>
+    <rect x="440" y="215" width="44" height="170" rx="22" fill="#2E9C95"/>
+    <path d="M276 80 A220 220 0 0 0 276 520 Z" fill="#1B1B1D"/>
+    <g fill="none" stroke="#3B3B3F" stroke-width="3"><path d="M276 110 A190 190 0 0 0 276 490"/><path d="M276 145 A155 155 0 0 0 276 455"/><path d="M276 180 A120 120 0 0 0 276 420"/></g>
+    <circle cx="276" cy="300" r="80" fill="#F3E7CF"/>
+    <g stroke="#1B1B1D" stroke-width="3.5" fill="#FFF"><circle cx="246" cy="284" r="16"/><circle cx="306" cy="284" r="16"/></g>
+    <circle cx="249" cy="274" r="6.5" fill="#1B1B1D"/><circle cx="309" cy="274" r="6.5" fill="#1B1B1D"/>
+    <circle cx="276" cy="306" r="7" fill="#1B1B1D"/>
+  </symbol>
+  <symbol id="spinner" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="48" fill="#1B1B1D"/>
+    <circle cx="50" cy="50" r="38" fill="none" stroke="#3B3B3F" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#3B3B3F" stroke-width="1.5"/>
+    <path d="M50 4 A46 46 0 0 1 92 32" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="17" fill="#D9A032"/>
+    <path d="M50 33 A17 17 0 0 1 67 50 L50 50 Z" fill="#E07A8C"/>
+    <path d="M50 67 A17 17 0 0 1 33 50 L50 50 Z" fill="#2E9C95"/>
+    <circle cx="50" cy="50" r="3.5" fill="#1B1B1D"/>
+  </symbol>
+  <symbol id="i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M8 9v6M11 9v6M13 9v6M16 9v6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+</svg>
+
+<!-- ================= LOGOWANIE / RESET / USTAWIENIE HASŁA / REJESTRACJA ================= -->
+<section id="authScreen" class="auth">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <svg class="logo" aria-hidden="true"><use href="#logo"/></svg>
+      <h1 class="display">VinyLog</h1>
+      <p class="lead" id="authLead"></p>
+      <p class="sub" id="authSub"></p>
+    </div>
+
+    <form id="loginForm" class="auth-form" novalidate>
+      <div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" type="email" autocomplete="email" placeholder="adres@poczta.pl" required></div>
+      <div class="field"><label for="loginPass">Hasło</label><input class="input" id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
+      <button type="button" class="link" id="toResetBtn" style="align-self:flex-end">Nie pamiętasz hasła?</button>
+      <div class="form-error" id="loginError" role="alert"></div>
+      <button class="btn" type="submit">Zaloguj się</button>
+    </form>
+
+    <form id="resetForm" class="auth-form" novalidate hidden>
+      <div class="field"><label for="resetEmail">E-mail</label><input class="input" id="resetEmail" type="email" autocomplete="email" placeholder="adres@poczta.pl" required></div>
+      <div class="form-error" id="resetError" role="alert"></div>
+      <button class="btn" type="submit">Wyślij link</button>
+      <button type="button" class="link" data-back-to-login style="align-self:center">Wróć do logowania</button>
+    </form>
+
+    <form id="passwordForm" class="auth-form" novalidate hidden>
+      <div class="field"><label for="newPass">Nowe hasło</label><input class="input" id="newPass" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 znaków" required></div>
+      <div class="field"><label for="newPass2">Powtórz hasło</label><input class="input" id="newPass2" type="password" autocomplete="new-password" minlength="8" required></div>
+      <div class="form-error" id="passError" role="alert"></div>
+      <button class="btn" type="submit">Ustaw hasło</button>
+    </form>
+
+    <form id="signupForm" class="auth-form" novalidate hidden>
+      <div class="field"><label for="signupEmail">E-mail</label><input class="input" id="signupEmail" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="signupPass">Hasło</label><input class="input" id="signupPass" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 znaków" required></div>
+      <div class="form-error" id="signupError" role="alert"></div>
+      <button class="btn" type="submit">Załóż konto</button>
+      <button type="button" class="link" data-back-to-login style="align-self:center">Mam już konto</button>
+    </form>
+
+    <div class="auth-foot" id="authFoot"></div>
+  </div>
+</section>
+
+<!-- ================= APLIKACJA ================= -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="brand" href="#" data-view-link="owned"><svg class="logo" aria-hidden="true"><use href="#logo"/></svg><span>VinyLog</span></a>
+      <nav class="tabs" aria-label="Widoki">
+        <button class="tab" data-view="owned" aria-current="page">Moja kolekcja</button>
+        <button class="tab" data-view="wanted">Po wypłacie</button>
+      </nav>
+      <div class="top-actions">
+        <button class="btn" id="addBtnTop"><svg class="icon"><use href="#i-plus"/></svg>Nowy nabytek</button>
+        <button class="logout" id="logoutBtn" aria-label="Wyloguj"><svg class="icon"><use href="#i-out"/></svg><span>Wyloguj</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="head">
+      <div>
+        <h2 class="display" id="viewTitle">Moja kolekcja</h2>
+        <p class="sub" id="viewSub"></p>
+      </div>
+      <div class="search">
+        <label for="search" class="sr">Szukaj</label>
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input class="input" id="search" type="search" autocomplete="off">
+      </div>
+    </div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </main>
+
+  <nav class="bottomnav" aria-label="Nawigacja">
+    <button data-view="owned" aria-current="page"><svg class="icon"><use href="#i-disc"/></svg>Moja kolekcja</button>
+    <button data-view="wanted"><svg class="icon"><use href="#i-heart"/></svg>Po wypłacie</button>
+    <button id="addBtnNav"><svg class="icon"><use href="#i-plus"/></svg>Nowy nabytek</button>
+  </nav>
+</div>
+
+<!-- ================= FORMULARZ: NOWY NABYTEK / EDYCJA ================= -->
+<dialog id="albumDialog" aria-labelledby="formTitle">
+  <form id="albumForm" class="sheet" novalidate>
+    <div class="sheet-head">
+      <div><h2 class="display" id="formTitle"></h2><p class="sub" id="formSub"></p></div>
+      <button type="button" class="close" data-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+    <div id="scanBlock">
+      <button type="button" class="scan-tile" id="openScanBtn">
+        <span class="ic"><svg class="icon"><use href="#i-scan"/></svg></span>
+        <span><b id="scanTileTitle"></b><span id="scanTileSub"></span></span>
+      </button>
+      <div class="or" style="margin-top:16px">albo ręcznie</div>
+    </div>
+    <div class="notice" id="dupNotice" hidden>
+      <svg class="icon"><use href="#i-copy"/></svg>
+      <div><b id="dupTitle"></b><span id="dupText"></span></div>
+    </div>
+    <div class="field"><label for="fArtist">Wykonawca</label><input class="input" id="fArtist" maxlength="160" placeholder="np. Fleetwood Mac" required></div>
+    <div class="field"><label for="fTitle">Tytuł</label><input class="input" id="fTitle" maxlength="200" placeholder="np. Rumours" required></div>
+    <div class="field">
+      <label for="fImage">Okładka</label>
+      <input class="input" id="fImage" type="url" inputmode="url" placeholder="Link do obrazka">
+      <span class="hint" id="imgHint"></span>
+      <img id="fPreview" class="cover-preview" alt="Podgląd okładki" hidden>
+    </div>
+    <div class="field">
+      <span class="lbl" id="statusLbl">Dodaj do</span>
+      <div class="seg" role="group" aria-labelledby="statusLbl">
+        <button type="button" data-status="owned" aria-pressed="true">Moja kolekcja</button>
+        <button type="button" data-status="wanted" aria-pressed="false">Po wypłacie</button>
+      </div>
+    </div>
+    <input type="hidden" id="fBarcode"><input type="hidden" id="fSource">
+    <div class="form-error" id="formError" role="alert"></div>
+    <div class="sheet-actions">
+      <button class="btn" type="submit" id="saveBtn"></button>
+      <button type="button" class="link" id="deleteBtn" hidden>Usuń płytę</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ================= POTWIERDZENIE USUNIĘCIA ================= -->
+<dialog id="confirmDialog" class="confirm" aria-labelledby="confirmTitle">
+  <div class="sheet">
+    <h2 class="display" id="confirmTitle"></h2>
+    <p class="sub" id="confirmText"></p>
+    <div class="row"><button class="btn-ghost" id="confirmNo"></button><button class="btn-danger" id="confirmYes"></button></div>
+  </div>
+</dialog>
+
+<!-- ================= SKANER ================= -->
+<section id="scanner" class="scanner" hidden aria-labelledby="scanTitle">
+  <div class="scanner-top"><b id="scanTitle">Skanowanie</b><button class="close" data-scan-close aria-label="Zamknij skaner"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="scanner-body">
+    <div class="viewfinder" id="viewfinder">
+      <video id="video" playsinline muted></video>
+      <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+      <span class="beam"></span>
+    </div>
+    <div class="scan-msg" role="status"><b id="scanMsg"></b><span id="scanMsg2"></span></div>
+    <form class="manual-code" id="codeForm" novalidate>
+      <label for="codeInput" class="sr">Numer spod kodu kreskowego</label>
+      <input class="input" id="codeInput" inputmode="numeric" pattern="[0-9]*" maxlength="14" placeholder="albo wpisz cyfry spod kodu">
+      <button type="submit">Szukaj</button>
+    </form>
+  </div>
+  <button class="btn-ghost" id="scanManualBtn">Wpisz ręcznie</button>
+</section>
+
+<!-- ================= WYNIK SKANU ================= -->
+<section id="found" class="scanner found" hidden aria-labelledby="foundTitle">
+  <div class="scanner-top"><button class="link" id="rescanBtn" style="display:flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;font-weight:700"><svg class="icon"><use href="#i-back"/></svg>Skanuj ponownie</button><button class="close" data-found-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="scanner-body" id="foundBody"></div>
+</section>
+
+<div id="loader" class="loader" hidden role="status" aria-live="polite">
+  <div class="loader-box"><svg class="spin" aria-hidden="true"><use href="#spinner"/></svg><p id="loaderText"></p></div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* =====================================================================
+   KONFIGURACJA
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: "https://ooiubupvbxyaggiciqrw.supabase.co",
+  SUPABASE_KEY: "sb_publishable_x_zj5GpNR6ryhUHCKgHrqg_leCEiQ3u",
+  ALLOW_SIGNUP: false,          // true = pokaż „Załóż konto”. Pamiętaj też o przełączniku w Supabase Auth.
+  LONG_OPERATION_MS: 900,       // po tylu ms loader dostaje sarkastyczny tekst
+  ZXING_URL: "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"
+};
+
+/* =====================================================================
+   TEKSTY — wszystkie w jednym miejscu. Tablica = losowany wariant.
+   Zasada: pierwsza linia mówi, co się stało; druga — co o tym myślimy.
+   ===================================================================== */
+const COPY = {
+  auth: {
+    lead: "Katalog twojej kolekcji winyli.",
+    sub: "Spis inwentarza dla osób, które „nie mają problemu”.",
+    resetLead: "Nowe hasło",
+    resetSub: "Podaj e-mail. Pamięć zawodzi, link nie.",
+    setLead: "Ustaw hasło",
+    setSub: "Coś, czego nikt nie zgadnie. Nawet ty za miesiąc.",
+    signupLead: "Załóż konto",
+    signupSub: "Pierwszy krok jest darmowy. Kolejne płyty już nie.",
+    inviteOnly: ["Konta tylko na zaproszenie.", "Selekcja ostrzejsza niż w sklepie z winylami."],
+    signupPrompt: "Nie masz konta?",
+    badLogin: "Nieprawidłowy e-mail lub hasło. Pamięć do tytułów jest, do haseł gorzej.",
+    emptyFields: "Wpisz e-mail i hasło.",
+    resetSent: ["Sprawdź skrzynkę", "Wysłane. Tym razem zapisz hasło."],
+    passMismatch: "Hasła się różnią. Jedno z nich chyba ma inną wersję.",
+    passShort: "Hasło musi mieć co najmniej 8 znaków.",
+    passSaved: ["Hasło ustawione", "Teraz tylko go nie zapomnij."],
+    signupDone: ["Konto założone", "Sprawdź skrzynkę i potwierdź adres. Potem już nie ma odwrotu."],
+    loggedOut: ["Wylogowano", "Z nałogu wylogować się nie da."]
+  },
+  views: {
+    owned:  { title: "Moja kolekcja", search: "Szukaj wykonawcy lub tytułu" },
+    wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”" }
+  },
+  // [liczba, komentarz]
+  ownedSub(n) {
+    const c = `${n} ${plural(n, "płyta", "płyty", "płyt")}`;
+    if (n < 10)  return [c, "Skromnie. Na razie."];
+    if (n < 50)  return [c, "Półka zaczyna się martwić."];
+    if (n < 200) return [c, "Półka prosi o litość."];
+    return [c, "To już nie kolekcja, to archiwum."];
+  },
+  wantedSub(n) {
+    return [`${n} ${plural(n, "płyta", "płyty", "płyt")}`, "Wypłata jest jedna."];
+  },
+  empty: {
+    owned:    ["Zero płyt.", "Gratulacje, finanse jeszcze żyją.", "Dodaj pierwszą"],
+    wanted:   ["Zero planów zakupowych.", "Podejrzanie rozsądnie."],
+    noResult: ["Nie masz.", "Tak, to jest dokładnie ten moment, w którym zaczyna się problem."],
+    noResultWanted: ["Nie ma tego na liście.", "Ale zawsze może się pojawić. Zwykle się pojawia."],
+    loadError: ["Nie udało się pobrać kolekcji.", "Internet wziął przerwę. Odśwież stronę."]
+  },
+  form: {
+    addTitle: "Nowy nabytek",
+    addSub: "Kolejna płyta? Jakże niespodziewanie.",
+    editTitle: "Edytuj płytę",
+    editSub: "Wersja poprawiona. Jak wydanie z bonusami.",
+    scanTitle: "Zeskanuj kod kreskowy",
+    scanSub: "Aparat nie ocenia. My owszem.",
+    imgHint: "Opcjonalnie. Choć to głównie dla niej się kupuje.",
+    add: "Dodaj",
+    addAnyway: "Dodaj mimo to",
+    save: "Zapisz zmiany",
+    missing: "Brakuje wykonawcy lub tytułu. Telepatii jeszcze nie wdrożyliśmy.",
+    badUrl: "Link do okładki musi zaczynać się od http:// lub https://."
+  },
+  have: "Mam!",
+  toast: {
+    addedOwned: [["Dodano do kolekcji", "Rozsądek po raz kolejny nie został zaproszony."],
+                 ["Dodano do kolekcji", "Kolekcja powiększona. Mieszkanie niestety nie."]],
+    addedWanted: [["Dodano do „Po wypłacie”", "Wypłata maleje, zanim przyszła."]],
+    moved: [["Przeniesiono do kolekcji", "Szybko poszło. Wypłata też."]],
+    movedFromWanted: [["Przeniesiono do kolekcji", "Szybko poszło. Wypłata też."]],
+    updated: [["Zapisano zmiany", "Udawajmy, że od początku tak było."]],
+    deleted: [["Usunięto płytę", "Rozsądek pojawił się z imponującym opóźnieniem."]],
+    duplicate: ["To już masz.", "Ale wiadomo — ten egzemplarz jest zupełnie inny."],
+    duplicateWanted: ["To już jest na liście.", "Powtarzanie życzenia nie przyspiesza wypłaty."],
+    saveError: ["Nie udało się zapisać", "Serwer powiedział „nie”. Rzadka asertywność w tym projekcie."],
+    deleteError: ["Nie udało się usunąć", "Płyta stawia opór. Spróbuj ponownie."],
+    genericError: ["Coś poszło nie tak", "Sprawdź połączenie i spróbuj ponownie."]
+  },
+  confirmDelete: {
+    title: "Usunąć tę płytę?",
+    text: (a) => `${a.title}, ${a.artist}. Ona ci nic nie zrobiła.`,
+    yes: "Usuń", no: "Zostaw"
+  },
+  scan: {
+    aim: ["Nakieruj aparat na kod kreskowy", "Ten z tyłu okładki. Z paskami, nie z ładnym zdjęciem."],
+    starting: ["Włączamy aparat…", "Chwila. Obiektyw też musi się obudzić."],
+    noCamera: ["Brak dostępu do aparatu", "Przeglądarka pilnuje aparatu lepiej niż ty budżetu. Zezwól albo wpisz cyfry."],
+    unsupported: ["Ta przeglądarka nie umie skanować", "Wpisz cyfry spod kodu. Też działa, tylko mniej efektownie."],
+    badCode: "Kod kreskowy ma 8, 12 albo 13 cyfr.",
+    foundPill: "Znaleziono",
+    foundTitle: "To ta płyta?",
+    foundSub: "Dobry gust albo słaba wola. Pewnie jedno i drugie.",
+    notFound: ["Nie znamy tej płyty.", "Rarytas albo pomyłka. Obstawiamy to drugie, ale po cichu.", "Dodaj ręcznie"],
+    lookupError: ["Wyszukiwarka nie odpowiada.", "Baza płyt chwilowo milczy. Spróbuj za moment albo dodaj ręcznie.", "Dodaj ręcznie"],
+    addOwned: "Dodaj do kolekcji",
+    addWanted: "Dodaj do „Po wypłacie”",
+    notThis: "To nie ta. Popraw ręcznie",
+    labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło: MusicBrainz" }
+  },
+  loader: {
+    // null = losowo z listy default
+    default: ["Technologia analizuje analogowy problem.",
+              "33 obroty na minutę. Szybciej się nie da."],
+    login: null,
+    lookup: "Technologia analizuje analogowy problem.",
+    save: null,
+    remove: null
+  }
+};
+
+/* =====================================================================
+   POMOCNIKI
+   ===================================================================== */
+const $ = (id) => document.getElementById(id);
+const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+function plural(n, one, few, many) {
+  if (n === 1) return one;
+  const d = n % 10, dd = n % 100;
+  return d >= 2 && d <= 4 && !(dd >= 12 && dd <= 14) ? few : many;
+}
+const norm = (s) => (s || "").toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+const safeUrl = (u) => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch { return null; } };
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null) n.append(k.nodeType ? k : document.createTextNode(k));
+  return n;
+}
+function svgUse(id, cls = "icon") {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("class", cls); s.setAttribute("aria-hidden", "true");
+  const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  u.setAttribute("href", "#" + id); s.append(u); return s;
+}
+function hashIdx(s, mod) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) % mod; }
+
+/* ---------- loader: krótko sam winyl, dłużej + tekst ---------- */
+let loaderCount = 0, loaderTimer;
+function showLoader(text) {
+  loaderCount++;
+  $("loaderText").textContent = text || pickOne(COPY.loader.default);
+  $("loader").classList.remove("long"); $("loader").hidden = false;
+  clearTimeout(loaderTimer);
+  loaderTimer = setTimeout(() => $("loader").classList.add("long"), CONFIG.LONG_OPERATION_MS);
+}
+function hideLoader() {
+  loaderCount = Math.max(0, loaderCount - 1);
+  if (!loaderCount) { clearTimeout(loaderTimer); $("loader").hidden = true; }
+}
+async function withLoader(text, fn) { showLoader(text); try { return await fn(); } finally { hideLoader(); } }
+
+/* ---------- toasty ---------- */
+const TOAST_STYLE = {
+  success: ["b-teal", "i-check"], wanted: ["b-pink", "i-heart"], dup: ["b-ochre", "i-copy"],
+  deleted: ["b-grey", "i-trash"], error: ["b-danger", "i-alert"], mail: ["b-teal", "i-mail"]
+};
+function toast(kind, pair) {
+  const [title, text] = Array.isArray(pair[0]) ? pickOne(pair) : pair;
+  const [bc, ic] = TOAST_STYLE[kind] || TOAST_STYLE.success;
+  const t = el("div", { class: "toast", role: kind === "error" ? "alert" : "status" },
+    el("span", { class: "badge " + bc }, svgUse(ic)),
+    el("div", {}, el("b", { text: title }), el("span", { text: text })));
+  $("toasts").append(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 250); }, kind === "error" ? 6500 : 4500);
+}
+
+/* =====================================================================
+   SUPABASE + AUTORYZACJA
+   ===================================================================== */
+// Typ linku z maila (zaproszenie / reset hasła) — czytamy, zanim klient wyczyści adres.
+const URL_AUTH_TYPE = new URLSearchParams(location.hash.slice(1)).get("type")
+                   || new URLSearchParams(location.search).get("type");
+const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+
+function authMode(mode) {
+  // mode: login | reset | password | signup
+  $("loginForm").hidden = mode !== "login";
+  $("resetForm").hidden = mode !== "reset";
+  $("passwordForm").hidden = mode !== "password";
+  $("signupForm").hidden = mode !== "signup";
+  const map = {
+    login: [COPY.auth.lead, COPY.auth.sub], reset: [COPY.auth.resetLead, COPY.auth.resetSub],
+    password: [COPY.auth.setLead, COPY.auth.setSub], signup: [COPY.auth.signupLead, COPY.auth.signupSub]
+  };
+  $("authLead").textContent = map[mode][0]; $("authSub").textContent = map[mode][1];
+  const foot = $("authFoot"); foot.replaceChildren();
+  if (mode === "login") {
+    if (CONFIG.ALLOW_SIGNUP) {
+      foot.append(el("span", {}, COPY.auth.signupPrompt + " ",
+        el("button", { type: "button", class: "link", style: "color:var(--ink);font-weight:700", text: "Załóż je", onclick: () => authMode("signup") })));
+    } else {
+      foot.append(el("span", { style: "font-weight:500", text: COPY.auth.inviteOnly[0] }), el("span", { class: "hint", text: COPY.auth.inviteOnly[1] }));
+    }
+  }
+}
+function showScreen(loggedIn) {
+  $("authScreen").hidden = loggedIn; $("app").hidden = !loggedIn;
+  document.body.classList.toggle("auth-only", !loggedIn);
+}
+
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("loginError").textContent = "";
+  const email = $("loginEmail").value.trim(), password = $("loginPass").value;
+  if (!email || !password) { $("loginError").textContent = COPY.auth.emptyFields; return; }
+  const { error } = await withLoader(COPY.loader.login, () => db.auth.signInWithPassword({ email, password }));
+  if (error) { $("loginError").textContent = COPY.auth.badLogin; return; }
+  $("loginPass").value = "";
+});
+$("toResetBtn").addEventListener("click", () => { $("resetEmail").value = $("loginEmail").value; authMode("reset"); });
+document.querySelectorAll("[data-back-to-login]").forEach(b => b.addEventListener("click", () => authMode("login")));
+$("resetForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("resetError").textContent = "";
+  const email = $("resetEmail").value.trim();
+  if (!email) { $("resetError").textContent = COPY.auth.emptyFields; return; }
+  const redirectTo = location.origin + location.pathname;
+  const { error } = await withLoader(null, () => db.auth.resetPasswordForEmail(email, { redirectTo }));
+  if (error) { $("resetError").textContent = COPY.toast.genericError[1]; return; }
+  toast("mail", COPY.auth.resetSent); authMode("login");
+});
+$("passwordForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("passError").textContent = "";
+  const p1 = $("newPass").value, p2 = $("newPass2").value;
+  if (p1.length < 8) { $("passError").textContent = COPY.auth.passShort; return; }
+  if (p1 !== p2) { $("passError").textContent = COPY.auth.passMismatch; return; }
+  const { error } = await withLoader(COPY.loader.save, () => db.auth.updateUser({ password: p1 }));
+  if (error) { $("passError").textContent = COPY.toast.genericError[1]; return; }
+  $("newPass").value = $("newPass2").value = "";
+  history.replaceState(null, "", location.pathname);
+  toast("success", COPY.auth.passSaved);
+  enterApp();
+});
+$("signupForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("signupError").textContent = "";
+  if (!CONFIG.ALLOW_SIGNUP) return;
+  const email = $("signupEmail").value.trim(), password = $("signupPass").value;
+  if (!email || password.length < 8) { $("signupError").textContent = COPY.auth.passShort; return; }
+  const { error } = await withLoader(null, () => db.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } }));
+  if (error) { $("signupError").textContent = COPY.toast.genericError[1]; return; }
+  toast("mail", COPY.auth.signupDone); authMode("login");
+});
+$("logoutBtn").addEventListener("click", async () => {
+  await db.auth.signOut();
+});
+
+let pendingPasswordSetup = URL_AUTH_TYPE === "invite" || URL_AUTH_TYPE === "recovery";
+db.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY") { pendingPasswordSetup = true; showScreen(false); authMode("password"); return; }
+  if (event === "SIGNED_IN" && session) {
+    if (pendingPasswordSetup) { showScreen(false); authMode("password"); return; }
+    enterApp();
+  }
+  if (event === "SIGNED_OUT") {
+    entered = false; albums = []; $("search").value = ""; showScreen(false); authMode("login");
+    toast("deleted", COPY.auth.loggedOut);
+  }
+});
+
+/* =====================================================================
+   DANE
+   ===================================================================== */
+let albums = [];
+let view = "owned";
+let loadFailed = false;
+let entered = false;
+
+async function enterApp() {
+  if (entered) return;
+  entered = true;
+  pendingPasswordSetup = false;
+  showScreen(true); setView(view, false);
+  await loadAlbums();
+}
+async function loadAlbums() {
+  const { data, error } = await withLoader(null, () =>
+    db.from("albums").select("id, artist, title, image_url, source_url, barcode, status, created_at").order("created_at", { ascending: false }));
+  loadFailed = !!error;
+  albums = error ? [] : (data || []);
+  render();
+}
+
+function setView(v, doRender = true) {
+  view = v;
+  document.querySelectorAll("[data-view]").forEach(b => {
+    if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  $("viewTitle").replaceChildren(COPY.views[v].title);
+  if (v === "wanted") $("viewTitle").append(svgUse("i-heart"));
+  $("search").placeholder = COPY.views[v].search;
+  if (doRender) render();
+}
+document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { $("search").value = ""; setView(b.dataset.view); window.scrollTo({ top: 0 }); }));
+document.querySelector("[data-view-link]").addEventListener("click", (e) => { e.preventDefault(); setView("owned"); });
+$("search").addEventListener("input", () => render());
+
+function coverNode(a) {
+  const wrap = el("div", { class: "cover" });
+  const url = safeUrl(a.image_url);
+  const ph = () => el("div", { class: "ph ph-" + hashIdx(a.id || a.title, 4) }, el("i"), el("i"), el("i"));
+  if (url) {
+    const img = el("img", { src: url, alt: "", loading: "lazy", referrerpolicy: "no-referrer" });
+    img.addEventListener("error", () => img.replaceWith(ph()), { once: true });
+    wrap.append(img);
+  } else wrap.append(ph());
+  return wrap;
+}
+function emptyNode([title, text, cta], badgeCls, icon, onCta) {
+  return el("div", { class: "empty" },
+    el("span", { class: "badge " + badgeCls }, svgUse(icon)),
+    el("strong", { text: title }), el("span", { text: text }),
+    cta ? el("button", { class: "btn", type: "button", text: cta, onclick: onCta }) : null);
+}
+function render() {
+  const grid = $("grid");
+  const list = albums.filter(a => (a.status || "owned") === view);
+  const q = norm($("search").value);
+  const shown = q ? list.filter(a => norm(a.artist + " " + a.title).includes(q)) : list;
+  if (loadFailed || !list.length) $("viewSub").replaceChildren();
+  else {
+    const [count, joke] = view === "owned" ? COPY.ownedSub(list.length) : COPY.wantedSub(list.length);
+    $("viewSub").replaceChildren(el("span", { class: "count" + (view === "wanted" ? " wanted" : ""), text: count }), el("span", { text: joke }));
+  }
+
+  if (loadFailed) { grid.replaceChildren(emptyNode(COPY.empty.loadError, "b-danger", "i-alert")); return; }
+  if (!list.length) {
+    grid.replaceChildren(view === "owned"
+      ? emptyNode(COPY.empty.owned, "b-ochre", "i-disc", () => openForm())
+      : emptyNode(COPY.empty.wanted, "b-pink", "i-heart"));
+    return;
+  }
+  if (!shown.length) {
+    grid.replaceChildren(emptyNode(view === "owned" ? COPY.empty.noResult : COPY.empty.noResultWanted, "b-grey", "i-search"));
+    return;
+  }
+  grid.replaceChildren(...shown.map(a => {
+    const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}. Edytuj`, onclick: () => openForm(a) },
+      coverNode(a), el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
+    const card = el("article", { class: "card" }, hit);
+    if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
+    return card;
+  }));
+}
+
+function findDuplicate({ artist, title, barcode }, exceptId) {
+  const key = norm(artist) + "|" + norm(title);
+  return albums.find(a => a.id !== exceptId && ((barcode && a.barcode && a.barcode === barcode) || norm(a.artist) + "|" + norm(a.title) === key));
+}
+
+async function moveToOwned(a) {
+  const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update({ status: "owned" }).eq("id", a.id));
+  if (error) { toast("error", COPY.toast.saveError); return; }
+  a.status = "owned"; render(); toast("success", COPY.toast.moved);
+}
+
+/* =====================================================================
+   FORMULARZ
+   ===================================================================== */
+let editing = null, formStatus = "owned", dupConfirmed = false;
+
+function setFormStatus(s) {
+  formStatus = s;
+  document.querySelectorAll("[data-status]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.status === s)));
+  resetDup();
+}
+document.querySelectorAll("[data-status]").forEach(b => b.addEventListener("click", () => setFormStatus(b.dataset.status)));
+function resetDup() { dupConfirmed = false; $("dupNotice").hidden = true; $("saveBtn").textContent = editing ? COPY.form.save : COPY.form.add; }
+["fArtist", "fTitle"].forEach(id => $(id).addEventListener("input", resetDup));
+function updatePreview() {
+  const u = safeUrl($("fImage").value.trim());
+  $("fPreview").hidden = !u; if (u) $("fPreview").src = u;
+}
+$("fImage").addEventListener("input", updatePreview);
+$("fPreview").addEventListener("error", () => { $("fPreview").hidden = true; });
+
+function openForm(a = null, prefill = {}) {
+  editing = a;
+  $("albumForm").reset(); $("formError").textContent = "";
+  $("formTitle").textContent = a ? COPY.form.editTitle : COPY.form.addTitle;
+  $("formSub").textContent = a ? COPY.form.editSub : COPY.form.addSub;
+  $("scanTileTitle").textContent = COPY.form.scanTitle; $("scanTileSub").textContent = COPY.form.scanSub;
+  $("imgHint").textContent = COPY.form.imgHint;
+  $("scanBlock").hidden = !!a;
+  $("deleteBtn").hidden = !a;
+  const src = a || prefill;
+  $("fArtist").value = src.artist || ""; $("fTitle").value = src.title || "";
+  $("fImage").value = src.image_url || ""; $("fBarcode").value = src.barcode || ""; $("fSource").value = src.source_url || "";
+  setFormStatus(src.status || (a ? "owned" : view));
+  updatePreview();
+  if (!$("albumDialog").open) $("albumDialog").showModal();
+  setTimeout(() => (src.artist ? $("fTitle") : $("fArtist")).focus(), 60);
+}
+$("albumDialog").addEventListener("click", (e) => { if (e.target === $("albumDialog")) $("albumDialog").close(); });
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+$("addBtnTop").addEventListener("click", () => openForm());
+$("addBtnNav").addEventListener("click", () => openForm());
+
+$("albumForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("formError").textContent = "";
+  const payload = {
+    artist: $("fArtist").value.trim(), title: $("fTitle").value.trim(),
+    image_url: $("fImage").value.trim() || null, status: formStatus,
+    barcode: $("fBarcode").value || null, source_url: $("fSource").value || null
+  };
+  if (!payload.artist || !payload.title) { $("formError").textContent = COPY.form.missing; return; }
+  if (payload.image_url && !safeUrl(payload.image_url)) { $("formError").textContent = COPY.form.badUrl; return; }
+  if (editing) {
+    delete payload.barcode; delete payload.source_url;
+    const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update(payload).eq("id", editing.id));
+    if (error) { toast("error", COPY.toast.saveError); return; }
+    Object.assign(editing, payload); $("albumDialog").close(); render(); toast("success", COPY.toast.updated);
+    return;
+  }
+  await addAlbum(payload, { fromForm: true });
+});
+
+// Wspólne dodawanie (formularz i skaner). Zwraca true, gdy zapisano.
+async function addAlbum(payload, { fromForm = false } = {}) {
+  const dup = findDuplicate(payload);
+  // Kupione z listy życzeń → przenosimy zamiast dublować.
+  if (dup && dup.status === "wanted" && payload.status === "owned") {
+    const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update({ status: "owned" }).eq("id", dup.id));
+    if (error) { toast("error", COPY.toast.saveError); return false; }
+    dup.status = "owned"; closeAllAdd(); setView("owned"); toast("success", COPY.toast.movedFromWanted); return true;
+  }
+  if (dup && dup.status === payload.status && !dupConfirmed) {
+    const [t, x] = payload.status === "owned" ? COPY.toast.duplicate : COPY.toast.duplicateWanted;
+    if (fromForm) {
+      $("dupTitle").textContent = t; $("dupText").textContent = x; $("dupNotice").hidden = false;
+      $("saveBtn").textContent = COPY.form.addAnyway; dupConfirmed = true;
+      return false;
+    }
+    toast("dup", [t, x]);
+    return false;
+  }
+  const { data, error } = await withLoader(COPY.loader.save, () => db.from("albums").insert(payload).select().single());
+  if (error) { toast("error", COPY.toast.saveError); return false; }
+  albums.unshift(data); closeAllAdd(); setView(payload.status);
+  toast(payload.status === "owned" ? "success" : "wanted", payload.status === "owned" ? COPY.toast.addedOwned : COPY.toast.addedWanted);
+  return true;
+}
+function closeAllAdd() { if ($("albumDialog").open) $("albumDialog").close(); closeFound(); dupConfirmed = false; }
+
+/* ---------- usuwanie ---------- */
+function confirmDialog(title, text, yes, no) {
+  return new Promise((resolve) => {
+    $("confirmTitle").textContent = title; $("confirmText").textContent = text;
+    $("confirmYes").textContent = yes; $("confirmNo").textContent = no;
+    const d = $("confirmDialog");
+    const done = (v) => { d.close(); resolve(v); };
+    $("confirmYes").onclick = () => done(true); $("confirmNo").onclick = () => done(false);
+    d.oncancel = () => resolve(false);
+    d.showModal(); $("confirmNo").focus();
+  });
+}
+$("deleteBtn").addEventListener("click", async () => {
+  const a = editing; if (!a) return;
+  const ok = await confirmDialog(COPY.confirmDelete.title, COPY.confirmDelete.text(a), COPY.confirmDelete.yes, COPY.confirmDelete.no);
+  if (!ok) return;
+  const { error } = await withLoader(COPY.loader.remove, () => db.from("albums").delete().eq("id", a.id));
+  if (error) { toast("error", COPY.toast.deleteError); return; }
+  albums = albums.filter(x => x.id !== a.id); $("albumDialog").close(); render(); toast("deleted", COPY.toast.deleted);
+});
+
+/* =====================================================================
+   SKANER: aparat → EAN/UPC → MusicBrainz → podgląd → zatwierdzenie
+   ===================================================================== */
+let stream = null, scanLoop = null, zxingReader = null, scanning = false;
+
+function scanMsg([a, b]) { $("scanMsg").textContent = a; $("scanMsg2").textContent = b; }
+async function openScanner() {
+  if ($("albumDialog").open) $("albumDialog").close();
+  $("scanner").hidden = false; $("codeInput").value = "";
+  document.body.style.overflow = "hidden";
+  scanMsg(COPY.scan.starting);
+  try { await startCamera(); scanMsg(COPY.scan.aim); }
+  catch (err) {
+    console.warn(err);
+    scanMsg(err && err.message === "unsupported" ? COPY.scan.unsupported : COPY.scan.noCamera);
+    $("viewfinder").hidden = true;
+  }
+}
+function closeScanner() {
+  stopCamera(); $("scanner").hidden = true; $("viewfinder").hidden = false;
+  if ($("found").hidden) document.body.style.overflow = "";
+}
+async function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("unsupported");
+  $("viewfinder").hidden = false; scanning = true;
+  const video = $("video");
+  if ("BarcodeDetector" in window) {
+    const formats = (await BarcodeDetector.getSupportedFormats()).filter(f => ["ean_13", "ean_8", "upc_a", "upc_e"].includes(f));
+    if (formats.length) {
+      const detector = new BarcodeDetector({ formats });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      video.srcObject = stream; await video.play();
+      const tick = async () => {
+        if (!scanning) return;
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length) { onCode(codes[0].rawValue); return; }
+        } catch (_) {}
+        scanLoop = setTimeout(tick, 200);
+      };
+      tick(); return;
+    }
+  }
+  // iPhone / Firefox: ZXing ładowany dopiero, gdy potrzebny
+  await loadScript(CONFIG.ZXING_URL);
+  const Z = window.ZXing;
+  const hints = new Map();
+  hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.EAN_13, Z.BarcodeFormat.EAN_8, Z.BarcodeFormat.UPC_A, Z.BarcodeFormat.UPC_E]);
+  zxingReader = new Z.BrowserMultiFormatReader(hints, 250);
+  await zxingReader.decodeFromConstraints({ video: { facingMode: { ideal: "environment" } }, audio: false }, video, (result) => {
+    if (result && scanning) onCode(result.getText());
+  });
+}
+function stopCamera() {
+  scanning = false; clearTimeout(scanLoop);
+  if (zxingReader) { try { zxingReader.reset(); } catch (_) {} zxingReader = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  const v = $("video"); v.pause(); v.srcObject = null;
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if ([...document.scripts].some(s => s.src === src)) return res();
+    const s = el("script", { src }); s.onload = res; s.onerror = () => rej(new Error("unsupported")); document.head.append(s);
+  });
+}
+function onCode(raw) {
+  if (!scanning) return;          // ZXing potrafi zgłosić ten sam kod kilka razy
+  const code = String(raw).replace(/\D/g, "");
+  if (!code) return;
+  if (navigator.vibrate) navigator.vibrate(60);
+  stopCamera(); lookup(code);
+}
+$("codeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const code = $("codeInput").value.replace(/\D/g, "");
+  if (![8, 12, 13].includes(code.length)) { $("scanMsg").textContent = COPY.scan.badCode; $("scanMsg2").textContent = ""; return; }
+  stopCamera(); lookup(code);
+});
+$("openScanBtn").addEventListener("click", openScanner);
+document.querySelector("[data-scan-close]").addEventListener("click", () => { closeScanner(); openForm(); });
+$("scanManualBtn").addEventListener("click", () => { closeScanner(); openForm(); });
+
+async function lookup(code) {
+  // Duplikat po kodzie — sprawdzamy od razu, bez pytania internetu.
+  const own = albums.find(a => a.barcode && a.barcode === code);
+  let result = null, failed = false;
+  try { result = await withLoader(COPY.loader.lookup, () => searchMusicBrainz(code)); }
+  catch (err) { console.warn(err); failed = true; }
+  closeScanner();
+  showFound(result, code, failed, own);
+}
+async function searchMusicBrainz(code) {
+  const variants = new Set([code]);
+  if (code.length === 12) variants.add("0" + code);
+  if (code.length === 13 && code.startsWith("0")) variants.add(code.slice(1));
+  const q = [...variants].map(v => "barcode:" + v).join(" OR ");
+  const r = await fetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&fmt=json&limit=10`, { headers: { Accept: "application/json" } });
+  if (!r.ok) throw new Error("mb " + r.status);
+  const { releases = [] } = await r.json();
+  if (!releases.length) return null;
+  const isVinyl = (rel) => (rel.media || []).some(m => /vinyl/i.test(m.format || ""));
+  const rel = releases.find(isVinyl) || releases[0];
+  const artist = (rel["artist-credit"] || []).map(c => (c.name || c.artist?.name || "") + (c.joinphrase || "")).join("").trim();
+  return {
+    artist: artist || "Nieznany wykonawca", title: rel.title, barcode: code,
+    source_url: `https://musicbrainz.org/release/${rel.id}`,
+    image_url: await findCover(rel)
+  };
+}
+async function findCover(rel) {
+  const tryCAA = async (path) => {
+    try {
+      const r = await fetch(`https://coverartarchive.org/${path}`);
+      if (!r.ok) return null;
+      const j = await r.json();
+      const img = (j.images || []).find(i => i.front) || (j.images || [])[0];
+      const u = img && (img.thumbnails?.["500"] || img.thumbnails?.large || img.image);
+      return u ? u.replace(/^http:/, "https:") : null;
+    } catch { return null; }
+  };
+  return (await tryCAA(`release/${rel.id}`)) || (rel["release-group"]?.id ? await tryCAA(`release-group/${rel["release-group"].id}`) : null);
+}
+
+function showFound(rec, code, failed, own) {
+  const body = $("foundBody"); body.replaceChildren();
+  $("found").hidden = false; document.body.style.overflow = "hidden";
+  if (!rec) {
+    const [t, x, cta] = failed ? COPY.scan.lookupError : COPY.scan.notFound;
+    body.style.justifyContent = "center";
+    body.append(emptyNode([t, x, cta], failed ? "b-danger" : "b-teal", failed ? "i-alert" : "i-scan",
+      () => { closeFound(); openForm(null, { barcode: code }); }));
+    return;
+  }
+  body.style.justifyContent = "";
+  const dup = own || findDuplicate(rec);
+  const pill = el("span", { class: "pill" }, svgUse("i-check"), COPY.scan.foundPill);
+  const head = el("div", {}, pill,
+    el("h2", { class: "display", style: "font-size:30px;margin-top:10px", id: "foundTitle", text: COPY.scan.foundTitle }),
+    el("p", { class: "sub", text: COPY.scan.foundSub }));
+  const record = el("div", { class: "record" }, el("div", { class: "disc" }), coverNode({ ...rec, id: code }));
+  const facts = el("div", { class: "facts" },
+    el("div", {}, el("small", { text: COPY.scan.labels.artist }), el("b", { text: rec.artist })),
+    el("div", {}, el("small", { text: COPY.scan.labels.title }), el("b", { text: rec.title })),
+    el("div", { class: "src" }, el("span", { text: `${COPY.scan.labels.code} ${code}` }),
+      el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: COPY.scan.labels.source })));
+  body.append(head, record, facts);
+  if (dup) {
+    const [t, x] = dup.status === "wanted" ? ["Masz to w „Po wypłacie”.", "Dodanie do kolekcji po prostu ją tam przeniesie."] : COPY.toast.duplicate;
+    body.append(el("div", { class: "notice" }, svgUse("i-copy"), el("div", {}, el("b", { text: t }), el("span", { text: x }))));
+  }
+  const actions = el("div", { class: "sheet-actions", style: "margin-top:auto" },
+    el("button", { class: "btn", type: "button", text: COPY.scan.addOwned, onclick: () => { dupConfirmed = true; addAlbum({ ...rec, status: "owned" }); } }),
+    el("button", { class: "btn-ghost", type: "button", text: COPY.scan.addWanted, onclick: () => { dupConfirmed = false; addAlbum({ ...rec, status: "wanted" }); } }),
+    el("button", { class: "link", type: "button", text: COPY.scan.notThis, onclick: () => { closeFound(); openForm(null, rec); } }));
+  body.append(actions);
+}
+function closeFound() { $("found").hidden = true; document.body.style.overflow = ""; }
+document.querySelector("[data-found-close]").addEventListener("click", closeFound);
+$("rescanBtn").addEventListener("click", () => { closeFound(); openScanner(); });
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("scanner").hidden) closeScanner();
+  else if (!$("found").hidden) closeFound();
+});
+
+/* =====================================================================
+   START
+   ===================================================================== */
+(async () => {
+  authMode("login");
+  const { data: { session } } = await db.auth.getSession();
+  if (session && pendingPasswordSetup) { showScreen(false); authMode("password"); }
+  else if (session) enterApp();
+  else showScreen(false);
+})();
+</script>
+</body>
+</html>
