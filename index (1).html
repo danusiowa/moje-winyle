@@ -1,0 +1,27 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moje winyle</title><style>
+body{font-family:system-ui;margin:0;background:#f6f3ee;color:#222} .wrap{max-width:1100px;margin:auto;padding:32px 20px}
+h1{font-size:42px} input{padding:12px;border:1px solid #ccc;border-radius:10px;width:100%;box-sizing:border-box;margin:5px 0 12px}
+button{padding:11px 16px;border:0;border-radius:20px;cursor:pointer} .primary{background:#222;color:#fff}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px} #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:22px;margin-top:25px}
+.card img,.ph{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#ddd} .ph{display:grid;place-items:center} .artist{color:#777}
+#login{max-width:400px;margin:12vh auto;background:white;padding:28px;border-radius:20px} dialog{border:0;border-radius:18px;width:min(480px,90vw)} .actions{display:flex;gap:8px;margin-top:10px}
+</style></head><body>
+<section id="login"><h1>Moje winyle</h1><form id="loginForm"><label>E-mail</label><input id="email" type="email" required><label>Hasło</label><input id="password" type="password" required><button class="primary">Zaloguj się</button><p id="err"></p></form></section>
+<section id="app" class="wrap" hidden><div class="top"><div><h1>Moje winyle</h1><span id="count"></span></div><div><button id="logout">Wyloguj</button> <button class="primary" id="add">+ Dodaj album</button></div></div>
+<input id="search" placeholder="🔎 Szukaj po tytule lub artyście..."><div id="grid"></div></section>
+<dialog id="dlg"><form id="form"><h2 id="formTitle">Dodaj album</h2><input id="id" type="hidden"><label>Artysta</label><input id="artist" required><label>Tytuł</label><input id="title" required><label>Link do strony sprzedażowej</label><input id="source" type="url" placeholder="https://..."><label>Link do okładki</label><input id="image" type="url" placeholder="https://...jpg"><div class="actions"><button type="button" id="cancel">Anuluj</button><button class="primary">Zapisz</button></div></form></dialog>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const db=supabase.createClient("https://ooiubupvbxyaggiciqrw.supabase.co","sb_publishable_x_zj5GpNR6ryhUHCKgHrqg_leCEiQ3u"); let albums=[];
+const $=x=>document.getElementById(x), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function screen(on){$("login").hidden=on;$("app").hidden=!on}
+async function load(){let {data,error}=await db.from("albums").select("*").order("artist");if(error)return alert(error.message);albums=data||[];render()}
+function render(){let q=$("search").value.toLowerCase(),a=albums.filter(x=>(x.artist+" "+x.title).toLowerCase().includes(q));$("count").textContent=albums.length+" albumów";$("grid").innerHTML=a.map(x=>`<div class="card">${x.image_url?`<img src="${esc(x.image_url)}">`:`<div class="ph">♪</div>`}<b>${esc(x.title)}</b><div class="artist">${esc(x.artist)}</div><div class="actions"><button onclick="edit('${x.id}')">Edytuj</button><button onclick="del('${x.id}')">Usuń</button></div></div>`).join("")||"<p>Brak albumów.</p>"}
+$("loginForm").onsubmit=async e=>{e.preventDefault();let {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});if(error)return $("err").textContent="Nie udało się zalogować.";screen(true);load()};
+$("logout").onclick=async()=>{await db.auth.signOut();screen(false)};$("search").oninput=render;
+$("add").onclick=()=>{$("form").reset();$("id").value="";$("formTitle").textContent="Dodaj album";$("dlg").showModal()};$("cancel").onclick=()=>$("dlg").close();
+window.edit=id=>{let a=albums.find(x=>x.id===id);$("id").value=id;$("artist").value=a.artist;$("title").value=a.title;$("source").value=a.source_url||"";$("image").value=a.image_url||"";$("formTitle").textContent="Edytuj album";$("dlg").showModal()};
+window.del=async id=>{if(!confirm("Usunąć album?"))return;let {error}=await db.from("albums").delete().eq("id",id);if(error)alert(error.message);else load()};
+$("form").onsubmit=async e=>{e.preventDefault();let p={artist:$("artist").value.trim(),title:$("title").value.trim(),source_url:$("source").value.trim()||null,image_url:$("image").value.trim()||null},r=$("id").value?await db.from("albums").update(p).eq("id",$("id").value):await db.from("albums").insert(p);if(r.error)return alert(r.error.message);$("dlg").close();load()};
+(async()=>{let {data:{session}}=await db.auth.getSession();screen(!!session);if(session)load()})();
+</script></body></html>
