@@ -136,6 +136,16 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .seg{display:flex;gap:4px;padding:4px;border-radius:13px;background:var(--sunk)}
 .seg button{flex:1 1 0;min-height:44px;border:0;border-radius:10px;background:transparent;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(46,47,51,.15)}
+.lbl-row{display:flex;align-items:center;gap:8px}
+.tip{position:relative;display:inline-flex}
+.tip-btn{position:relative;width:24px;height:24px;padding:0;border-radius:12px;border:1.5px solid var(--muted);background:none;color:var(--muted);font-size:13px;font-weight:800;line-height:1;display:grid;place-items:center}
+.tip-btn::after{content:"";position:absolute;inset:-10px}
+.tip-btn:hover,.tip.open .tip-btn{border-color:var(--ink);color:var(--ink)}
+.tip-pop{position:absolute;left:-8px;bottom:calc(100% + 10px);width:min(300px,72vw);padding:12px 14px;border-radius:12px;background:var(--ink);color:#fff;font-size:13px;line-height:1.45;font-weight:400;box-shadow:0 10px 30px rgba(30,28,25,.25);opacity:0;visibility:hidden;transition:opacity .15s ease;z-index:5;display:flex;flex-direction:column;gap:6px}
+.tip-pop span:last-child{color:#C9C5BE}
+@media (hover:hover){.tip:hover .tip-pop{opacity:1;visibility:visible}}
+.tip:has(.tip-btn:focus-visible) .tip-pop,.tip.open .tip-pop{opacity:1;visibility:visible}
+.hint.warn{color:var(--danger)}
 .cover-preview{width:96px;border-radius:10px;aspect-ratio:1;object-fit:cover;border:1px solid var(--line)}
 .notice{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ochre-soft)}
 .notice .icon{color:var(--ochre-ink)}
@@ -386,8 +396,14 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
     <div class="field"><label for="fArtist">Wykonawca</label><input class="input" id="fArtist" maxlength="160" placeholder="np. Fleetwood Mac" required></div>
     <div class="field"><label for="fTitle">Tytuł</label><input class="input" id="fTitle" maxlength="200" placeholder="np. Rumours" required></div>
     <div class="field">
-      <label for="fImage">Okładka</label>
-      <input class="input" id="fImage" type="url" inputmode="url" placeholder="Link do obrazka">
+      <div class="lbl-row">
+        <label for="fImage">Okładka</label>
+        <span class="tip" id="imgTipWrap">
+          <button type="button" class="tip-btn" id="imgTipBtn" aria-label="Jak zdobyć link do okładki?" aria-expanded="false" aria-controls="imgTip">?</button>
+          <span class="tip-pop" id="imgTip" role="tooltip"></span>
+        </span>
+      </div>
+      <input class="input" id="fImage" type="url" inputmode="url" placeholder="Link do obrazka" aria-describedby="imgTip imgHint">
       <span class="hint" id="imgHint"></span>
       <img id="fPreview" class="cover-preview" alt="Podgląd okładki" hidden>
     </div>
@@ -514,6 +530,10 @@ const COPY = {
     scanTitle: "Zeskanuj kod kreskowy",
     scanSub: "Aparat nie ocenia. My owszem.",
     imgHint: "Opcjonalnie. Choć to głównie dla niej się kupuje.",
+    imgTip: ["Kliknij prawym przyciskiem na zdjęcie okładki i wybierz „Kopiuj adres obrazu”.",
+             "Na telefonie: przytrzymaj zdjęcie i skopiuj jego adres.",
+             "Link do całej strony sklepu nie zadziała. Sprawdzone."],
+    imgBroken: "To chyba link do strony, nie do obrazka. Zajrzyj pod znak zapytania.",
     add: "Dodaj",
     addAnyway: "Dodaj mimo to",
     save: "Zapisz zmiany",
@@ -829,12 +849,27 @@ function setFormStatus(s) {
 document.querySelectorAll("[data-status]").forEach(b => b.addEventListener("click", () => setFormStatus(b.dataset.status)));
 function resetDup() { dupConfirmed = false; $("dupNotice").hidden = true; $("saveBtn").textContent = editing ? COPY.form.save : COPY.form.add; }
 ["fArtist", "fTitle"].forEach(id => $(id).addEventListener("input", resetDup));
+function setImgHint(warn) {
+  $("imgHint").textContent = warn ? COPY.form.imgBroken : COPY.form.imgHint;
+  $("imgHint").classList.toggle("warn", !!warn);
+}
 function updatePreview() {
+  setImgHint(false);
   const u = safeUrl($("fImage").value.trim());
   $("fPreview").hidden = !u; if (u) $("fPreview").src = u;
 }
 $("fImage").addEventListener("input", updatePreview);
-$("fPreview").addEventListener("error", () => { $("fPreview").hidden = true; });
+$("fPreview").addEventListener("error", () => { $("fPreview").hidden = true; if ($("fImage").value.trim()) setImgHint(true); });
+$("imgTip").replaceChildren(...COPY.form.imgTip.map(t => el("span", { text: t })));
+$("imgTipBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = !$("imgTipWrap").classList.contains("open");
+  $("imgTipWrap").classList.toggle("open", open);
+  $("imgTipBtn").setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("click", (e) => {
+  if (!$("imgTipWrap").contains(e.target)) { $("imgTipWrap").classList.remove("open"); $("imgTipBtn").setAttribute("aria-expanded", "false"); }
+});
 
 function openForm(a = null, prefill = {}) {
   editing = a;
