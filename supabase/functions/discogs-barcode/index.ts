@@ -3,7 +3,10 @@
 // DISCOGS_TOKEN w Supabase, więc nigdy nie trafia do przeglądarki ani do repo.
 // Wpuszcza tylko zalogowanych użytkowników VinyLog.
 //
-// Odpowiedź: { found: true, artist, title, image_url, source_url } albo { found: false }
+// Odpowiedź: { found: true, artist, title, year, country, label, catno, formats,
+//              format_quantity, image_url, source_url, master_url } albo { found: false }
+// Funkcja zwraca surowe dane Discogs; ujednolicenie (kraj, format, wytwórnia…)
+// robi aplikacja w jednym miejscu, tak samo dla Discogs i MusicBrainz.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -76,8 +79,15 @@ Deno.serve(async (req) => {
       found: true,
       artist: artist || "Nieznany wykonawca",
       title: title || "Bez tytułu",
+      year: rel.year ?? null,
+      country: rel.country ?? null,
+      label: (rel.label ?? [])[0] ?? null,
+      catno: rel.catno ?? null,
+      formats: rel.format ?? [],
+      format_quantity: rel.format_quantity ?? null,
       image_url: img,
       source_url: `https://www.discogs.com/release/${rel.id}`,
+      master_url: rel.master_id ? `https://www.discogs.com/master/${rel.master_id}` : null,
     });
   }
   return json(req, { found: false });
