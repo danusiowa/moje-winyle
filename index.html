@@ -102,14 +102,17 @@ img{max-width:100%}
 .card{display:flex;flex-direction:column;gap:8px;min-width:0}
 .card{position:relative}
 .card > .have{margin-top:auto}   /* „Mam!” zawsze w jednej linii w rzędzie */
-/* Mały licznik egzemplarzy w linii z wykonawcą, po prawej: − 2 + (nie zasłania okładki, nie dokłada wiersza) */
-.qty{position:absolute;right:0;bottom:-2px;display:inline-flex;align-items:center;gap:0;padding:1px;border-radius:13px;background:var(--surface);border:1px solid var(--line)}
-.card.has-qty .meta span{padding-right:72px}
-.qty button{width:22px;height:22px;border:0;border-radius:50%;background:transparent;font-size:15px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
+/* Lista: tylko „×2” za wykonawcą, gdy egzemplarzy jest więcej niż jeden — nazwy zostają pełne */
+.meta .artist-row{display:flex;align-items:baseline;gap:6px;min-width:0;white-space:nowrap}
+.meta .artist-row > span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.meta .artist-row > .xn{flex-shrink:0;overflow:visible;padding:0 7px;border-radius:9px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;line-height:18px}
+/* Licznik − 2 + na karcie płyty */
+.qty{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:20px;background:var(--surface);border:1px solid var(--line);align-self:flex-start}
+.qty button{width:34px;height:34px;border:0;border-radius:50%;background:transparent;font-size:19px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
 .qty button::before{content:"";position:absolute;inset:-6px}   /* większe pole dotyku niż widoczny przycisk */
 .qty button:hover:not(:disabled){background:var(--sunk)}
 .qty button:disabled{opacity:.3}
-.qty output{min-width:18px;text-align:center;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.qty output{min-width:30px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
 .qty.many{background:var(--ink);border-color:var(--ink)}
 .qty.many button,.qty.many output{color:#fff}
 .qty.many button:hover:not(:disabled){background:rgba(255,255,255,.15)}
@@ -237,7 +240,8 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .facts .src a{color:var(--muted)}
 .facts .src-links{display:flex;gap:12px;flex-wrap:wrap}
 .facts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
-.facts-grid > div:last-child:nth-child(odd){grid-column:1/-1}
+.facts-grid > div:last-child:nth-child(odd),.facts-grid > .wide{grid-column:1/-1}
+.facts-grid > div > .qty{margin-top:4px}
 .facts-grid span{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 
 /* ---------- loader ---------- */
@@ -1060,10 +1064,11 @@ function render() {
     const cover = coverNode(a);
     const copiesLabel = (a.copies || 1) > 1 ? `, ${a.copies} ${plural(a.copies, "egzemplarz", "egzemplarze", "egzemplarzy")}` : "";
     const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}${copiesLabel}. Szczegóły`, onclick: () => openDetails(a) },
-      cover, el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
+      cover, el("span", { class: "meta" }, el("b", { text: a.title }),
+        el("span", { class: "artist-row" }, el("span", { text: a.artist }),
+          view === "owned" && (a.copies || 1) > 1 ? el("span", { class: "xn", text: "×" + a.copies, "aria-hidden": "true" }) : null)));
     const card = el("article", { class: "card" }, hit);
     if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
-    else { card.classList.add("has-qty"); card.append(qtyNode(a)); }
     return card;
   }));
 }
@@ -1109,13 +1114,13 @@ function qtyNode(a) {
     const v = Math.max(1, Math.min(99, (a.copies || 1) + d));
     if (v === (a.copies || 1)) return;
     if (a._saved == null) a._saved = a.copies || 1;
-    a.copies = v; sync(v); renderCount();
+    a.copies = v; sync(v); render();
     clearTimeout(a._qtyTimer);
     a._qtyTimer = setTimeout(async () => {
       const before = a._saved; a._saved = null;
       if (a.copies === before) return;
       const { error } = await db.from("albums").update({ copies: a.copies }).eq("id", a.id);
-      if (error) { a.copies = before; sync(before); renderCount(); toast("error", COPY.toast.saveError); }
+      if (error) { a.copies = before; sync(before); render(); toast("error", COPY.toast.saveError); }
     }, 700);
   }
   return box;
@@ -1545,7 +1550,7 @@ function openDetails(a) {
   const record = el("div", { class: "record" }, el("div", { class: "disc" }), coverNode(a));
   const rows = releaseFacts(a);
   const extra = [];
-  if (owned) extra.push(el("div", {}, el("small", { text: D.copies }), el("span", { text: String(a.copies || 1) })));
+  if (owned) extra.push(el("div", { class: "wide" }, el("small", { text: D.copies }), qtyNode(a)));
   const facts = el("div", { class: "facts" },
     ...(rows.length ? rows : [el("span", { class: "empty-facts", text: D.noFacts })]),
     extra.length ? el("div", { class: "facts-grid" }, ...extra) : null,
