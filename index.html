@@ -100,6 +100,14 @@ img{max-width:100%}
 .search .input{padding-left:44px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:40px 28px}
 .card{display:flex;flex-direction:column;gap:8px;min-width:0}
+.card > .have,.card > .qty{margin-top:auto}   /* „Mam!” i licznik zawsze w jednej linii w rzędzie */
+/* Licznik egzemplarzy przy każdej płycie w kolekcji: − 2 egz. + */
+.qty{display:inline-flex;align-items:center;align-self:flex-start;gap:2px;padding:3px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.qty button{width:32px;height:32px;border:0;border-radius:50%;background:transparent;font-size:19px;font-weight:700;line-height:1;color:var(--ink)}
+.qty button:hover:not(:disabled){background:var(--sunk)}
+.qty button:disabled{opacity:.3}
+.qty output{min-width:50px;text-align:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.qty.many{border-color:var(--ochre);background:var(--ochre-soft)}
 .card-hit{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;text-align:left;min-width:0;border-radius:12px}
 .cover{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--sunk)}
 .cover img{width:100%;height:100%;object-fit:cover;display:block}
@@ -207,7 +215,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .found .scanner-body{justify-content:flex-start;text-align:left;align-items:stretch}
 .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--teal-soft);color:var(--teal-ink);font-size:13px;font-weight:700}
 .pill .icon{width:14px;height:14px}
-.record{position:relative;height:230px;flex-shrink:0}
+.record{position:relative;height:230px;width:298px;max-width:100%;margin:4px auto 0;flex-shrink:0}  /* okładka 230 + wysunięty winyl = 298 px, wyśrodkowane */
 .record .disc{position:absolute;left:92px;top:12px;width:206px;height:206px;border-radius:50%;background:var(--vinyl);display:grid;place-items:center}
 .record .disc::after{content:"";width:62px;height:62px;border-radius:50%;background:var(--label)}
 .record .cover{position:absolute;left:0;top:0;width:230px}
@@ -219,7 +227,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .facts .src-links{display:flex;gap:12px;flex-wrap:wrap}
 .facts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
 .facts-grid > div:last-child:nth-child(odd){grid-column:1/-1}
-.facts-grid span{font-size:15px;font-weight:600}
+.facts-grid span{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 
 /* ---------- loader ---------- */
 .loader{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(246,241,233,.72);backdrop-filter:blur(3px)}
@@ -693,7 +701,7 @@ const COPY = {
     addWanted: "Dodaj do „Po wypłacie”",
     notThis: "To nie ta. Popraw ręcznie",
     labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło:", allEditions: "wszystkie wydania",
-              edition: "Wydanie", label: "Wytwórnia · nr kat.", format: "Format" }
+              edition: "Wydanie", label: "Wytwórnia", catno: "Nr katalogowy", format: "Format" }
   },
   loader: {
     // null = losowo z listy default
@@ -1001,16 +1009,18 @@ function emptyNode([title, text, cta], badgeCls, icon, onCta) {
     el("strong", { text: title }), el("span", { text: text }),
     cta ? el("button", { class: "btn", type: "button", text: cta, onclick: onCta }) : null);
 }
+function renderCount() {
+  const list = albums.filter(a => (a.status || "owned") === view);
+  if (loadFailed || !list.length) { $("viewSub").replaceChildren(); return; }
+  const [count, joke] = view === "owned" ? COPY.ownedSub(list.reduce((s, a) => s + (a.copies || 1), 0)) : COPY.wantedSub(list.length);
+  $("viewSub").replaceChildren(el("span", { class: "count" + (view === "wanted" ? " wanted" : ""), text: count }), el("span", { text: joke }));
+}
 function render() {
   const grid = $("grid");
   const list = albums.filter(a => (a.status || "owned") === view);
   const q = norm($("search").value);
   const shown = q ? list.filter(a => norm(a.artist + " " + a.title).includes(q)) : list;
-  if (loadFailed || !list.length) $("viewSub").replaceChildren();
-  else {
-    const [count, joke] = view === "owned" ? COPY.ownedSub(list.reduce((s, a) => s + (a.copies || 1), 0)) : COPY.wantedSub(list.length);
-    $("viewSub").replaceChildren(el("span", { class: "count" + (view === "wanted" ? " wanted" : ""), text: count }), el("span", { text: joke }));
-  }
+  renderCount();
 
   if (loadFailed) { grid.replaceChildren(emptyNode(COPY.empty.loadError, "b-danger", "i-alert")); return; }
   if (!list.length) {
@@ -1025,12 +1035,12 @@ function render() {
   }
   grid.replaceChildren(...shown.map(a => {
     const cover = coverNode(a);
-    if (view === "owned" && (a.copies || 1) > 1) cover.append(el("span", { class: "copies", text: "×" + a.copies, "aria-hidden": "true" }));
     const copiesLabel = (a.copies || 1) > 1 ? `, ${a.copies} ${plural(a.copies, "egzemplarz", "egzemplarze", "egzemplarzy")}` : "";
     const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}${copiesLabel}. Edytuj`, onclick: () => openForm(a) },
       cover, el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
     const card = el("article", { class: "card" }, hit);
     if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
+    else card.append(qtyNode(a));
     return card;
   }));
 }
@@ -1062,6 +1072,30 @@ function sameRecord(x, y) {
 }
 function toastCopy(n) {
   toast("success", ["Dodano kolejny egzemplarz", pickFresh(COPY.toast.copyAdded).replace("{n}", n)]);
+}
+// Licznik przy płycie: zmiana od razu na ekranie, zapis po krótkiej przerwie (kilka kliknięć = jeden zapis).
+function qtyNode(a) {
+  const n = a.copies || 1;
+  const out = el("output", { "aria-live": "polite", text: `${n} egz.` });
+  const minus = el("button", { type: "button", text: "−", "aria-label": `Jeden egzemplarz mniej: ${a.title}`, onclick: () => bump(-1) });
+  const plus = el("button", { type: "button", text: "+", "aria-label": `Jeden egzemplarz więcej: ${a.title}`, onclick: () => bump(1) });
+  const box = el("div", { class: "qty" + (n > 1 ? " many" : ""), role: "group", "aria-label": "Egzemplarze" }, minus, out, plus);
+  const sync = (v) => { out.textContent = `${v} egz.`; minus.disabled = v <= 1; plus.disabled = v >= 99; box.classList.toggle("many", v > 1); };
+  sync(n);
+  function bump(d) {
+    const v = Math.max(1, Math.min(99, (a.copies || 1) + d));
+    if (v === (a.copies || 1)) return;
+    if (a._saved == null) a._saved = a.copies || 1;
+    a.copies = v; sync(v); renderCount();
+    clearTimeout(a._qtyTimer);
+    a._qtyTimer = setTimeout(async () => {
+      const before = a._saved; a._saved = null;
+      if (a.copies === before) return;
+      const { error } = await db.from("albums").update({ copies: a.copies }).eq("id", a.id);
+      if (error) { a.copies = before; sync(before); renderCount(); toast("error", COPY.toast.saveError); }
+    }, 700);
+  }
+  return box;
 }
 // +1 egzemplarz istniejącej płyty zamiast nowego wpisu.
 async function incrementCopies(a) {
@@ -1431,7 +1465,7 @@ const MEDIUM_PL = { vinyl: "Winyl", cd: "CD", cassette: "Kaseta", "dvd": "DVD", 
 const FORMAT_TAGS = [
   [/^reissue$/i, "reedycja"], [/^repress$/i, "dodruk"], [/^remaster(ed)?$/i, "remaster"],
   [/^limited edition$/i, "edycja limitowana"], [/^deluxe edition$/i, "edycja deluxe"], [/^numbered$/i, "numerowana"],
-  [/^compilation$/i, "kompilacja"], [/^picture disc$/i, "picture disc"], [/^(\d{3}) ?(gram|g)$/i, (m) => m[1] + " g"],
+  [/^compilation$/i, "kompilacja"], [/^picture disc$/i, "picture disc"], [/^(\d{3}) ?(gram|g)$/i, (m) => m[1] + "\u00a0g"]   /* twarda spacja: „180 g” nie łamie się w dwóch liniach */,
   [/^mono$/i, "mono"], [/^live$/i, "koncertowa"], [/^soundtrack$/i, "ścieżka dźwiękowa"], [/^unofficial release$/i, "nieoficjalne"]
 ];
 function formatString({ medium, count, size, kind, tags }) {
@@ -1483,8 +1517,9 @@ function releaseFacts(r) {
   const L = COPY.scan.labels;
   const rows = [
     [L.edition, [r.year, countryName(r.country)].filter(Boolean).join(" · ")],
-    [L.label, [r.label, r.catalog_number].filter(Boolean).join(" · ")],
-    [L.format, r.format]
+    [L.format, r.format],
+    [L.label, r.label],
+    [L.catno, r.catalog_number]
   ].filter(([, v]) => v);
   if (!rows.length) return [];
   return [el("div", { class: "facts-grid" }, ...rows.map(([k, v]) => el("div", {}, el("small", { text: k }), el("span", { text: v }))))];
