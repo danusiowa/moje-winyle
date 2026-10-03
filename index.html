@@ -633,22 +633,29 @@ const COPY = {
   },
   // [liczba, komentarz]
   // n = liczba egzemplarzy (płyta w 2 egzemplarzach liczy się podwójnie — tyle stoi na półce)
+  // Komentarze losują się raz na wejście do aplikacji (sessionPick), żeby nie zmieniały się przy każdym kliknięciu.
+  countLines: {
+    lt10:  ["Skromnie. Na razie.", "Niewinny początek.", "Każda kolekcja tak zaczynała.", "Na razie to jeszcze hobby."],
+    lt50:  ["Półka zaczyna się martwić.", "To się robi poważne.", "Rodzina zaczyna zadawać pytania.", "Półka liczy dni do wymiany."],
+    lt200: ["Półka prosi o litość.", "Regał to za mało, potrzebny plan.", "Kolekcja z ambicjami. I z ciężarem."],
+    more:  ["To już nie kolekcja, to archiwum.", "Tu już obowiązuje cisza jak w bibliotece.", "Mieszkanie jest dodatkiem do kolekcji.", "Ubezpieczyciel chciałby porozmawiać."],
+    wanted: ["Wypłata jest jedna.", "Lista dłuższa niż miesiąc.", "Wypłata już się boi."]
+  },
   ownedSub(n) {
-    const c = `${n} ${plural(n, "płyta", "płyty", "płyt")}`;
-    if (n < 10)  return [c, "Skromnie. Na razie."];
-    if (n < 50)  return [c, "Półka zaczyna się martwić."];
-    if (n < 200) return [c, "Półka prosi o litość."];
-    return [c, "To już nie kolekcja, to archiwum."];
+    const c = `${n} ${plural(n, "płyta", "płyty", "płyt")}`, L = this.countLines;
+    const key = n < 10 ? "lt10" : n < 50 ? "lt50" : n < 200 ? "lt200" : "more";
+    return [c, sessionPick("count." + key, L[key])];
   },
   wantedSub(n) {
-    return [`${n} ${plural(n, "płyta", "płyty", "płyt")}`, "Wypłata jest jedna."];
+    return [`${n} ${plural(n, "płyta", "płyty", "płyt")}`, sessionPick("count.wanted", this.countLines.wanted)];
   },
   empty: {
-    owned:    ["Zero płyt.", "Gratulacje, finanse jeszcze żyją.", "Dodaj pierwszą. Od jednej się zaczyna"],
-    wanted:   ["Zero planów zakupowych.", "Podejrzanie rozsądnie."],
+    get owned()  { return ["Zero płyt.", sessionPick("empty.owned", ["Gratulacje, finanse jeszcze żyją.", "Tu zaraz będzie problem. Piękny problem."]), "Dodaj pierwszą. Od jednej się zaczyna"]; },
+    get wanted() { return ["Zero planów zakupowych.", sessionPick("empty.wanted", ["Podejrzanie rozsądnie.", "Ani jednego marzenia? Nie wierzymy."])]; },
     noResult: ["Nie masz.", "Tak, to jest dokładnie ten moment, w którym zaczyna się problem.", "Wyczyść wyszukiwanie"],
     noResultWanted: ["Nie ma tego na liście.", "Ale zawsze może się pojawić. Zwykle się pojawia.", "Wyczyść wyszukiwanie"],
-    loadError: ["Nie udało się pobrać kolekcji.", "Internet wziął przerwę. Odśwież stronę."]
+    get loadError() { return ["Nie udało się pobrać kolekcji.", sessionPick("empty.loadError", ["Internet wziął przerwę. Odśwież stronę.",
+      "Serwer zrobił przerwę na kawę. Odśwież stronę.", "Cisza między utworami trwa za długo. Odśwież stronę."])]; }
   },
   form: {
     addTitle: "Nowy nabytek",
@@ -861,6 +868,9 @@ const COPY = {
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+// Losuje raz i trzyma wybór do odświeżenia strony (dla tekstów, które renderują się wiele razy).
+const sessionPicks = {};
+function sessionPick(key, arr) { return sessionPicks[key] ??= pickOne(arr); }
 // „Worek” bez powtórek: tasujemy listę, wyciągamy po kolei, a po wyczerpaniu tasujemy od nowa
 // (pilnując, żeby ostatni tekst nie wypadł od razu ponownie).
 const freshBags = new WeakMap();
