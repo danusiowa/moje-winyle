@@ -221,14 +221,16 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ---------- toasty ---------- */
-.toasts{position:fixed;right:24px;bottom:24px;z-index:100;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 32px));pointer-events:none}
-.toast{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 26px rgba(46,47,51,.14);pointer-events:auto;animation:toastIn .22s ease}
-.toast.out{opacity:0;transform:translateY(8px);transition:.2s ease}
+.toasts{position:fixed;right:24px;top:calc(92px + 16px + env(safe-area-inset-top));z-index:100;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 32px));pointer-events:none}
+.toast{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 26px rgba(46,47,51,.14);pointer-events:auto;animation:toastDrop .55s cubic-bezier(.2,.9,.3,1.25) both}
+.toast.out{opacity:0;transform:translateY(-14px);transition:.22s ease}
 .toast .badge{width:32px;height:32px;border-radius:16px;display:grid;place-items:center;flex-shrink:0}
 .toast .badge .icon{width:18px;height:18px}
 .toast b{display:block;font-size:15px}
 .toast span{display:block;font-size:14px;color:var(--muted);line-height:1.35}
-@keyframes toastIn{from{opacity:0;transform:translateY(10px)}}
+/* Powiadomienie „spada” z góry z lekkim odbiciem. */
+@keyframes toastDrop{0%{opacity:0;transform:translateY(-110%) rotate(-1.5deg)}60%{opacity:1;transform:translateY(6px) rotate(.6deg)}80%{transform:translateY(-2px) rotate(0)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
 
 /* ---------- mobile ---------- */
 @media (max-width:760px){
@@ -256,8 +258,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
   /* „Nowy nabytek” to akcja, nie zakładka: grafitowa pigułka jak główny przycisk. */
   .bottomnav #addBtnNav{color:var(--ink);font-weight:700}
   .bottomnav #addBtnNav .icon{background:var(--ink);color:#fff}
-  .toasts{left:16px;right:16px;width:auto;bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom))}
-  .auth-only .toasts,.no-nav .toasts{bottom:calc(16px + env(safe-area-inset-bottom))}
+  .toasts{left:16px;right:16px;width:auto;top:calc(12px + env(safe-area-inset-top))}
   dialog{width:100%;max-width:none;max-height:92svh;margin:auto 0 0;border-radius:22px 22px 0 0}
   dialog.confirm{width:calc(100vw - 32px);margin:auto;border-radius:20px}
   .sheet{padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
@@ -573,11 +574,63 @@ const COPY = {
   },
   have: "Mam!",
   toast: {
-    addedOwned: [["Dodano do kolekcji", "Rozsądek po raz kolejny nie został zaproszony."],
-                 ["Dodano do kolekcji", "Kolekcja powiększona. Mieszkanie niestety nie."]],
-    addedWanted: [["Dodano do „Po wypłacie”", "Wypłata maleje, zanim przyszła."]],
-    moved: [["Przeniesiono do kolekcji", "Szybko poszło. Wypłata też."]],
-    movedFromWanted: [["Przeniesiono do kolekcji", "Szybko poszło. Wypłata też."]],
+    // Losowanie bez powtórek: każdy tekst pojawi się raz, zanim któryś wróci (pickFresh).
+    addedOwned: [
+      "Rozsądek po raz kolejny nie został zaproszony.",
+      "Kolekcja powiększona. Mieszkanie niestety nie.",
+      "Półka przyjęła to z godnością. Na razie.",
+      "Kolejny dowód w sprawie przeciwko oszczędzaniu.",
+      "Budżet domowy właśnie złożył zażalenie.",
+      "Spokojnie, to inwestycja. Tak się przynajmniej mówi.",
+      "Doskonały wybór. Jak każdy poprzedni, rzecz jasna.",
+      "Gramofon zaciera ręce. Konto mniej.",
+      "Jeszcze jedna i na pewno wystarczy. Prawda?",
+      "Zapisane. Teraz trzeba tylko znaleźć na nią miejsce.",
+      "Analogowe szczęście, cyfrowy dowód winy.",
+      "Tego nie da się już cofnąć. W sensie emocjonalnym.",
+      "Sąsiedzi jeszcze nie wiedzą, co ich czeka.",
+      "Mówią, że to tylko hobby. Mówią też wiele innych rzeczy.",
+      "40 minut muzyki i 40 lat tłumaczenia, że było warto.",
+      "Półka trzeszczy, ale z dumą.",
+      "W tym tempie przyda się bibliotekarz.",
+      "Oficjalnie: to była okazja. Nieoficjalnie: też.",
+      "Dodano. Portfel zgłosił to jako incydent.",
+      "Kolekcja rośnie szybciej niż oszczędności. Bez zaskoczeń.",
+      "Winyl ma się świetnie. Finanse — bez komentarza.",
+      "Kolejna płyta, której „naprawdę brakowało”.",
+      "Ta przynajmniej nie pyta, ile kosztowała.",
+      "Wybór był trudny, decyzja — natychmiastowa."
+    ].map(t => ["Dodano do kolekcji", t]),
+    addedWanted: [
+      "Wypłata maleje, zanim przyszła.",
+      "Lista życzeń dłuższa. Wypłata bez zmian.",
+      "Zapisane na później. „Później” bywa zaskakująco szybko.",
+      "Na razie tylko marzenie. Bardzo konkretne marzenie.",
+      "Planowanie wydatków na poziomie eksperckim.",
+      "Wypłata jeszcze o tym nie wie.",
+      "Silna wola: 1, kolekcja: 0. Na razie.",
+      "Teoretycznie to tylko lista. Teoretycznie.",
+      "Dobrze mieć cele w życiu. Najlepiej 12-calowe.",
+      "Zanotowane. Bank nie musi wiedzieć.",
+      "Cierpliwość to cnota. Podobno.",
+      "Przyszłe „ja” ma już plany na tę wypłatę.",
+      "Na liście, tam gdzie czekają wszystkie piękne pomysły.",
+      "Jeszcze nie kupione. Słowo-klucz: „jeszcze”.",
+      "Lista rośnie, wypłata się kurczy. Czysta fizyka."
+    ].map(t => ["Dodano do „Po wypłacie”", t]),
+    moved: [
+      "Szybko poszło. Wypłata też.",
+      "Z listy życzeń prosto na półkę. Ekspresowo.",
+      "Marzenie spełnione. Konto nieco mniej.",
+      "Cierpliwość wytrzymała imponująco krótko.",
+      "Jedno życzenie mniej, jeden argument przeciw oszczędzaniu więcej.",
+      "„Kiedyś” właśnie nadeszło.",
+      "Plan zakupowy zrealizowany. Co do ostatniego grosza.",
+      "Silna wola próbowała. Doceniamy sam gest.",
+      "Lista krótsza, półka cięższa.",
+      "Wypłata przyszła i od razu wyszła."
+    ].map(t => ["Przeniesiono do kolekcji", t]),
+    get movedFromWanted() { return this.moved; },
     updated: [["Zapisano zmiany", "Udawajmy, że od początku tak było."]],
     deleted: [["Usunięto płytę", "Rozsądek pojawił się z imponującym opóźnieniem."]],
     duplicate: ["To już masz.", "Ale wiadomo — ten egzemplarz jest zupełnie inny."],
@@ -624,6 +677,21 @@ const COPY = {
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+// „Worek” bez powtórek: tasujemy listę, wyciągamy po kolei, a po wyczerpaniu tasujemy od nowa
+// (pilnując, żeby ostatni tekst nie wypadł od razu ponownie).
+const freshBags = new WeakMap();
+function pickFresh(arr) {
+  if (arr.length < 2) return arr[0];
+  let s = freshBags.get(arr);
+  if (!s || !s.bag.length) {
+    const bag = arr.slice();
+    for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+    if (s && bag[bag.length - 1] === s.last) [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+    s = { bag, last: s?.last }; freshBags.set(arr, s);
+  }
+  s.last = s.bag.pop();
+  return s.last;
+}
 function plural(n, one, few, many) {
   if (n === 1) return one;
   const d = n % 10, dd = n % 100;
@@ -672,7 +740,7 @@ const TOAST_STYLE = {
   deleted: ["b-grey", "i-trash"], error: ["b-danger", "i-alert"], mail: ["b-teal", "i-mail"]
 };
 function toast(kind, pair) {
-  const [title, text] = Array.isArray(pair[0]) ? pickOne(pair) : pair;
+  const [title, text] = Array.isArray(pair[0]) ? pickFresh(pair) : pair;
   const [bc, ic] = TOAST_STYLE[kind] || TOAST_STYLE.success;
   const t = el("div", { class: "toast", role: kind === "error" ? "alert" : "status" },
     el("span", { class: "badge " + bc }, svgUse(ic)),
