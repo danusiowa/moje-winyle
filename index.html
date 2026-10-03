@@ -68,10 +68,11 @@ img{max-width:100%}
 .auth-card{width:min(400px,100%);display:flex;flex-direction:column;gap:30px}
 .auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
 .auth-brand .logo{width:112px;height:112px;overflow:visible}
-.auth-logo .band{transform-box:fill-box;transform-origin:100% 50%;transform:scaleX(0);transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.auth-logo .eyes{transform-box:fill-box;transform-origin:50% 60%;transition:transform .18s ease,opacity .12s ease .06s}
+.auth-logo .shut{opacity:0;transition:opacity .12s ease}
 .auth-logo .pupils{transition:transform .3s ease}
-.auth-logo.hide .band{transform:scaleX(1)}
-.auth-logo.hide .pupils{transform:translate(0,4px)}
+.auth-logo.hide .eyes{transform:scaleY(.08);opacity:0}   /* ukryte hasło: oczy zamknięte */
+.auth-logo.hide .shut{opacity:1;transition-delay:.1s}
 .auth-logo.peek .pupils{transform:translate(-3px,9px)}   /* hasło widoczne: zerka w dół, na pole */
 .auth-logo.look .pupils{transform:translate(-4px,8px)}  /* pisanie e-maila: patrzy na pole */
 .auth-brand h1{font-size:40px;margin-top:4px}
@@ -407,7 +408,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 <section id="authScreen" class="auth">
   <div class="auth-card">
     <div class="auth-brand">
-      <!-- Logo z ruchomymi oczami: przy wpisywaniu ukrytego hasła różowy pasek zasłania oczy -->
+      <!-- Logo z ruchomymi oczami: przy wpisywaniu ukrytego hasła zamyka oczy -->
       <svg class="logo auth-logo" id="authLogo" viewBox="26 56 500 500" aria-hidden="true">
         <rect x="370" y="160" width="44" height="280" rx="22" fill="#E0A238"/>
         <rect x="440" y="215" width="44" height="170" rx="22" fill="#2C9A94"/>
@@ -415,10 +416,12 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
         <path d="M276 80 A220 220 0 0 0 276 520 Z" fill="#201D24"/>
         <g fill="none" stroke="#3B3B3F" stroke-width="3"><path d="M276 110 A190 190 0 0 0 276 490"/><path d="M276 145 A155 155 0 0 0 276 455"/><path d="M276 180 A120 120 0 0 0 276 420"/></g>
         <circle cx="276" cy="300" r="80" fill="#F5E5CB"/>
-        <g stroke="#201D24" stroke-width="3.5" fill="#FFF"><circle cx="246" cy="284" r="16"/><circle cx="306" cy="284" r="16"/></g>
-        <g class="pupils" fill="#201D24"><circle cx="249" cy="274" r="6.5"/><circle cx="309" cy="274" r="6.5"/></g>
+        <g class="eyes">
+          <g stroke="#201D24" stroke-width="3.5" fill="#FFF"><circle cx="246" cy="284" r="16"/><circle cx="306" cy="284" r="16"/></g>
+          <g class="pupils" fill="#201D24"><circle cx="249" cy="274" r="6.5"/><circle cx="309" cy="274" r="6.5"/></g>
+        </g>
+        <g class="shut" fill="none" stroke="#201D24" stroke-width="4.5" stroke-linecap="round"><path d="M231 284 Q246 296 261 284"/><path d="M291 284 Q306 296 321 284"/></g>
         <circle cx="276" cy="306" r="7" fill="#201D24"/>
-        <rect class="band" x="216" y="266" width="128" height="36" rx="18" fill="#E5768C"/>
       </svg>
       <h1 class="display">VinyLog</h1>
       <p class="lead" id="authLead"></p>
