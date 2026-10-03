@@ -102,14 +102,15 @@ img{max-width:100%}
 .card{display:flex;flex-direction:column;gap:8px;min-width:0}
 .card{position:relative}
 .card > .have{margin-top:auto}   /* „Mam!” zawsze w jednej linii w rzędzie */
-/* Mały licznik egzemplarzy w rogu okładki: − 2 + (nie zabiera miejsca pod płytą) */
-.qty{position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:0;padding:2px;border-radius:15px;background:rgba(255,255,255,.92);box-shadow:0 1px 4px rgba(0,0,0,.18);backdrop-filter:blur(4px)}
-.qty button{width:24px;height:24px;border:0;border-radius:50%;background:transparent;font-size:16px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
+/* Mały licznik egzemplarzy w linii z wykonawcą, po prawej: − 2 + (nie zasłania okładki, nie dokłada wiersza) */
+.qty{position:absolute;right:0;bottom:-2px;display:inline-flex;align-items:center;gap:0;padding:1px;border-radius:13px;background:var(--surface);border:1px solid var(--line)}
+.card.has-qty .meta span{padding-right:72px}
+.qty button{width:22px;height:22px;border:0;border-radius:50%;background:transparent;font-size:15px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
 .qty button::before{content:"";position:absolute;inset:-6px}   /* większe pole dotyku niż widoczny przycisk */
 .qty button:hover:not(:disabled){background:var(--sunk)}
 .qty button:disabled{opacity:.3}
-.qty output{min-width:18px;text-align:center;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
-.qty.many{background:var(--ink)}
+.qty output{min-width:18px;text-align:center;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.qty.many{background:var(--ink);border-color:var(--ink)}
 .qty.many button,.qty.many output{color:#fff}
 .qty.many button:hover:not(:disabled){background:rgba(255,255,255,.15)}
 .card-hit{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;text-align:left;min-width:0;border-radius:12px}
@@ -1062,7 +1063,7 @@ function render() {
       cover, el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
     const card = el("article", { class: "card" }, hit);
     if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
-    else card.append(qtyNode(a));
+    else { card.classList.add("has-qty"); card.append(qtyNode(a)); }
     return card;
   }));
 }
