@@ -295,6 +295,13 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .found{background:var(--bg);color:var(--ink)}
 .found .scanner-top b{color:var(--ink)}
 .found .close{background:var(--sunk);color:var(--ink)}
+.found .btn-ghost{color:var(--ink);border-color:var(--ink)}
+/* cienkie, dopasowane paski przewijania zamiast szarych systemowych */
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box}
 .found .scanner-body{justify-content:flex-start;text-align:left;align-items:stretch}
 .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--teal-soft);color:var(--teal-ink);font-size:13px;font-weight:700}
 .pill .icon{width:14px;height:14px}
@@ -983,10 +990,14 @@ const COPY = {
     foundTitle: "To ta płyta?",
     foundSubLines: [
       "Dobry gust albo słaba wola. Pewnie jedno i drugie.",
-      "Kod nie kłamie. Portfel też nie.",
-      "Wiemy, co to. Pytanie, czy pamiętasz, ile to było."
+      "Znaleźliśmy. Ukrywanie przed domownikami to już Twoja działka."
     ],
-    get foundSub() { return pickFresh(this.foundSubLines); },
+    foundSubScanOnly: ["Kod nie kłamie. Portfel też nie."],   // tylko po skanie, nie po wyszukaniu
+    foundSub(afterSearch) {
+      if (afterSearch) return pickFresh(this.foundSubLines);
+      this._scanLines ??= [...this.foundSubLines, ...this.foundSubScanOnly];
+      return pickFresh(this._scanLines);
+    },
     notFoundLines: [
       "Rarytas albo pomyłka. Obstawiamy to drugie, ale po cichu.",
       "Tak rzadka, że nawet internet jej nie zna.",
@@ -2199,7 +2210,7 @@ function showFound(rec, code, failed, own) {
   const pill = el("span", { class: "pill" }, svgUse("i-check"), COPY.scan.foundPill);
   const head = el("div", {}, pill,
     el("h2", { class: "display", style: "font-size:30px;margin-top:10px", id: "foundTitle", text: COPY.scan.foundTitle }),
-    el("p", { class: "sub", text: COPY.scan.foundSub }));
+    el("p", { class: "sub", text: COPY.scan.foundSub(foundFrom === "find") }));
   const record = el("div", { class: "record" }, el("div", { class: "disc" }), coverNode({ ...rec, id: code }));
   const facts = el("div", { class: "facts" },
     el("div", {}, el("small", { text: COPY.scan.labels.artist }), el("b", { text: rec.artist })),
