@@ -207,6 +207,22 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .scan-tile .ic{width:48px;height:48px;border-radius:14px;background:var(--teal);color:#fff;display:grid;place-items:center;flex-shrink:0}
 .scan-tile .ic .icon{width:26px;height:26px}
 .scan-tile b{display:block;font-size:16px}
+.add-tiles{display:flex;flex-direction:column;gap:10px}
+.find-tile{background:var(--ochre-soft)} .find-tile .ic{background:var(--ochre);color:var(--vinyl)}
+/* Wyszukiwanie płyty po tytule / wykonawcy */
+.find-form{display:flex;gap:8px}
+.find-form .input{flex:1 1 auto;min-width:0}
+.find-form .btn{flex:0 0 auto;min-height:50px;padding:0 20px}
+.find-status{font-size:14px;color:var(--muted);text-align:center;padding:18px 0}
+.find-list{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.find-item{display:flex;gap:12px;align-items:center;width:100%;padding:8px;border:1px solid var(--line);border-radius:var(--r-field);background:var(--surface);text-align:left}
+.find-item:hover{border-color:var(--ochre)}
+.find-item .th{flex:0 0 56px;width:56px;height:56px;border-radius:10px;overflow:hidden;background:var(--sunk);position:relative}
+.find-item .th img{width:100%;height:100%;object-fit:cover;display:block}
+.find-item .tx{min-width:0;display:flex;flex-direction:column;gap:1px}
+.find-item .tx b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.find-item .tx span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.find-item .tx small{font-size:12px;color:var(--muted)}
 .scan-tile span{font-size:14px;color:var(--muted)}
 .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -539,12 +555,18 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <div><h2 class="display" id="formTitle"></h2><p class="sub" id="formSub"></p></div>
       <button type="button" class="close" data-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button>
     </div>
-    <div id="scanBlock">
-      <button type="button" class="scan-tile" id="openScanBtn">
-        <span class="ic"><svg class="icon"><use href="#i-scan"/></svg></span>
-        <span><b id="scanTileTitle"></b><span id="scanTileSub"></span></span>
+    <div id="addTiles" class="add-tiles">
+      <div id="scanBlock">
+        <button type="button" class="scan-tile" id="openScanBtn">
+          <span class="ic"><svg class="icon"><use href="#i-scan"/></svg></span>
+          <span><b id="scanTileTitle"></b><span id="scanTileSub"></span></span>
+        </button>
+      </div>
+      <button type="button" class="scan-tile find-tile" id="openFindBtn">
+        <span class="ic"><svg class="icon"><use href="#i-search"/></svg></span>
+        <span><b id="findTileTitle"></b><span id="findTileSub"></span></span>
       </button>
-      <div class="or" style="margin-top:16px">albo ręcznie</div>
+      <div class="or" style="margin-top:6px">albo ręcznie</div>
     </div>
     <div class="notice" id="dupNotice" hidden>
       <svg class="icon"><use href="#i-copy"/></svg>
@@ -601,6 +623,20 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 </dialog>
 
 <!-- ================= POTWIERDZENIE USUNIĘCIA ================= -->
+<dialog id="findDialog" aria-labelledby="findTitle">
+  <div class="sheet">
+    <div class="sheet-head">
+      <div><h2 class="display" id="findTitle"></h2><p class="sub" id="findSub"></p></div>
+      <button type="button" class="close" data-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+    <form class="find-form" id="findForm" role="search" novalidate>
+      <label for="findQuery" class="sr">Tytuł lub wykonawca</label>
+      <input class="input" id="findQuery" type="search" autocomplete="off" enterkeyhint="search">
+      <button class="btn" type="submit" id="findSubmit"></button>
+    </form>
+    <div id="findResults" aria-live="polite"></div>
+  </div>
+</dialog>
 <dialog id="inviteDialog" aria-labelledby="inviteTitle">
   <form class="sheet" id="inviteForm" novalidate>
     <div class="sheet-head">
@@ -886,6 +922,18 @@ const COPY = {
     // druga linia pod datą dodania, losowo
     sinceOwned: ["Najstabilniejszy związek w tym domu.", "Od tego dnia półka nie jest taka sama.", "I ani razu nie zawiodła.", "Wierność godna pozazdroszczenia."],
     sinceWanted: ["Czeka cierpliwie. W przeciwieństwie do niektórych.", "Wypłata wie, co ma robić.", "Marzenia też mają datę ważności. Ta jeszcze nie."]
+  },
+  find: {
+    tileTitle: "Znajdź w bazie płyt",
+    tileSub: "Wpisz tytuł albo wykonawcę. Resztę doczytamy.",
+    title: "Szukaj płyty",
+    sub: "Tytuł, wykonawca. Nucenie nie działa.",
+    placeholder: "np. fleetwood mac rumours",
+    submit: "Szukaj",
+    searching: "Przerzucamy półki…",
+    short: "Minimalizm doceniamy, ale potrzebne są dwa znaki.",
+    none: ["Pusto.", "Albo literówka, albo jesteś przed trendem.", "Dodaj ręcznie"],
+    error: ["Bazy płyt nie odpowiadają.", "Spróbuj za chwilę albo dodaj ręcznie.", "Dodaj ręcznie"]
   },
   invite: {
     title: "Zaproś do VinyLog",
@@ -1479,6 +1527,8 @@ function openForm(a = null, prefill = {}) {
   $("formTitle").textContent = a ? COPY.form.editTitle : COPY.form.addTitle;
   $("formSub").textContent = a ? COPY.form.editSub : COPY.form.addSub;
   $("scanTileTitle").textContent = COPY.form.scanTitle; $("scanTileSub").textContent = COPY.form.scanSub;
+  $("findTileTitle").textContent = COPY.find.tileTitle; $("findTileSub").textContent = COPY.find.tileSub;
+  $("addTiles").hidden = !!a;
   $("imgHint").textContent = COPY.form.imgHint;
   $("scanBlock").hidden = !!a;
   $("deleteBtn").hidden = !a;
@@ -1573,6 +1623,7 @@ $("albumDialog").addEventListener("cancel", (e) => { e.preventDefault(); request
 
 // Wspólne dodawanie (formularz i skaner). Zwraca true, gdy zapisano.
 async function addAlbum(payload, { fromForm = false } = {}) {
+  { const { thumb, ...clean } = payload; payload = clean; }   // miniatura z wyszukiwania nie trafia do bazy
   const dup = findDuplicate(payload);
   // Kupione z listy życzeń → przenosimy zamiast dublować.
   if (dup && dup.status === "wanted" && payload.status === "owned") {
@@ -1727,6 +1778,7 @@ async function lookup(code) {
   catch (err) { console.warn(err); failed = true; }
   closeScanner();
   if (enrichTarget) { const t = enrichTarget; enrichTarget = null; await enrichFrom(t, result, code, failed); return; }
+  foundFrom = "scan";
   showFound(result, code, failed, own);
 }
 
@@ -1789,17 +1841,43 @@ async function searchDiscogs(code) {
   const { data, error } = await db.functions.invoke("discogs-barcode", { body: { barcode: code } });
   if (error) throw error;
   if (!data?.found) return null;
-  const f = (data.formats || []).map(String);
+  return fromDiscogs(data, code);
+}
+// Jeden wynik Discogs → wspólny kształt (ten sam dla skanu i wyszukiwania po tekście)
+function fromDiscogs(d, code) {
+  const f = (d.formats || []).map(String);
   const has = (re) => f.some(x => re.test(x));
-  return normalizeRelease({
-    artist: data.artist, title: data.title, barcode: code,
-    year: data.year, country: data.country, label: data.label, catno: data.catno,
+  const rec = normalizeRelease({
+    artist: d.artist, title: d.title, barcode: code || d.barcode || null,
+    year: d.year, country: d.country, label: d.label, catno: d.catno,
     medium: f[0] || null,
-    count: Number(data.format_quantity) || 1,
+    count: Number(d.format_quantity) || 1,
     size: (f.find(x => /^\d{1,2}"$/.test(x)) || null),
     kind: has(/^LP$/) ? "LP" : has(/^EP$/) ? "EP" : has(/^(Single|Maxi-Single)$/) ? "Single" : has(/^Album$/) ? "Album" : null,
     tags: f,
-    image_url: data.image_url, source_url: data.source_url, master_url: data.master_url
+    image_url: d.image_url, source_url: d.source_url, master_url: d.master_url
+  });
+  rec.thumb = d.thumb || d.image_url || null;   // tylko do listy wyników, nie zapisujemy
+  return rec;
+}
+// Jedno wydanie MusicBrainz → wspólny kształt
+function fromMusicBrainz(rel, code, image) {
+  const artist = (rel["artist-credit"] || []).map(c => (c.name || c.artist?.name || "") + (c.joinphrase || "")).join("").trim();
+  const media = rel.media || [];
+  const fmt = media[0]?.format || "";                       // np. 12" Vinyl
+  const li = (rel["label-info"] || [])[0] || {};
+  const rg = rel["release-group"] || {};
+  return normalizeRelease({
+    artist, title: rel.title, barcode: code || (/^\d{12,13}$/.test(rel.barcode || "") ? rel.barcode : null),
+    year: (rel.date || "").slice(0, 4), country: rel.country, label: li.label?.name, catno: li["catalog-number"],
+    medium: fmt.replace(/^\d{1,2}"\s*/, "") || null,
+    count: media.length || 1,
+    size: (fmt.match(/^\d{1,2}"/) || [null])[0],
+    kind: rg["primary-type"] || null,
+    tags: rg["secondary-types"] || [],
+    image_url: image || null,
+    source_url: `https://musicbrainz.org/release/${rel.id}`,
+    master_url: rg.id ? `https://musicbrainz.org/release-group/${rg.id}` : null
   });
 }
 
@@ -1814,23 +1892,33 @@ async function searchMusicBrainz(code) {
   if (!releases.length) return null;
   const isVinyl = (rel) => (rel.media || []).some(m => /vinyl/i.test(m.format || ""));
   const rel = releases.find(isVinyl) || releases[0];
-  const artist = (rel["artist-credit"] || []).map(c => (c.name || c.artist?.name || "") + (c.joinphrase || "")).join("").trim();
-  const media = rel.media || [];
-  const fmt = media[0]?.format || "";                       // np. 12" Vinyl
-  const li = (rel["label-info"] || [])[0] || {};
-  const rg = rel["release-group"] || {};
-  return normalizeRelease({
-    artist, title: rel.title, barcode: code,
-    year: (rel.date || "").slice(0, 4), country: rel.country, label: li.label?.name, catno: li["catalog-number"],
-    medium: fmt.replace(/^\d{1,2}"\s*/, "") || null,
-    count: media.length || 1,
-    size: (fmt.match(/^\d{1,2}"/) || [null])[0],
-    kind: rg["primary-type"] || null,
-    tags: rg["secondary-types"] || [],
-    image_url: await findCover(rel),
-    source_url: `https://musicbrainz.org/release/${rel.id}`,
-    master_url: rg.id ? `https://musicbrainz.org/release-group/${rg.id}` : null
-  });
+  return fromMusicBrainz(rel, code, await findCover(rel));
+}
+
+/* ---------- Wyszukiwanie po tytule / wykonawcy ----------
+   Najpierw Discogs (tylko winyle), uzupełnione MusicBrainz, gdy wyników jest mało albo Discogs nie odpowiada. */
+async function searchText(q) {
+  let out = [], errors = 0;
+  try {
+    const { data, error } = await db.functions.invoke("discogs-barcode", { body: { q } });
+    if (error) throw error;
+    out = (data?.results || []).map(d => fromDiscogs(d));
+  } catch (err) { console.warn(err); errors++; }
+  if (out.length < 5) {
+    try {
+      const r = await fetch(`https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(q)}&dismax=true&fmt=json&limit=12`, { headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error("mb " + r.status);
+      const { releases = [] } = await r.json();
+      const vinyl = releases.filter(rel => (rel.media || []).some(m => /vinyl/i.test(m.format || "")));
+      for (const rel of (vinyl.length ? vinyl : releases)) {
+        const rec = fromMusicBrainz(rel, null, `https://coverartarchive.org/release/${rel.id}/front-500`);
+        rec.thumb = `https://coverartarchive.org/release/${rel.id}/front-250`;
+        out.push(rec);
+      }
+    } catch (err) { console.warn(err); errors++; }
+  }
+  if (!out.length && errors === 2) throw new Error("all sources failed");
+  return out;
 }
 
 /* ---------- Ujednolicanie danych wydania ---------- */
@@ -1916,6 +2004,55 @@ function normalizeRelease(raw) {
     master_url: raw.master_url || null
   };
 }
+/* ---------- Szukaj płyty po tytule / wykonawcy ---------- */
+let foundFrom = "scan", lastFindQuery = "";
+function openFind(q) {
+  const F = COPY.find;
+  // Podpowiedź z tego, co już wpisano w formularzu
+  const guess = q ?? [$("fArtist").value, $("fTitle").value].map(s => s.trim()).filter(Boolean).join(" ");
+  if ($("albumDialog").open) $("albumDialog").close();
+  $("findTitle").textContent = F.title; $("findSub").textContent = F.sub;
+  $("findQuery").placeholder = F.placeholder; $("findSubmit").textContent = F.submit;
+  $("findQuery").value = guess || ""; $("findResults").replaceChildren();
+  if (!$("findDialog").open) { $("findDialog").showModal(); modalOpened(); }
+  if (guess) runFind(); else if (isDesktop()) setTimeout(() => $("findQuery").focus(), 60);
+}
+let findSeq = 0;
+async function runFind() {
+  const F = COPY.find, q = $("findQuery").value.trim(), box = $("findResults");
+  if (q.length < 2) { box.replaceChildren(el("p", { class: "find-status", text: F.short })); return; }
+  lastFindQuery = q;
+  const seq = ++findSeq;
+  box.replaceChildren(el("p", { class: "find-status", text: F.searching }));
+  let list = null, failed = false;
+  try { list = await searchText(q); } catch (err) { console.warn(err); failed = true; }
+  if (seq !== findSeq) return;   // w międzyczasie wpisano coś nowego
+  if (failed || !list.length) {
+    const [t, x, cta] = failed ? F.error : F.none;
+    box.replaceChildren(emptyNode([t, x, cta], failed ? "b-danger" : "b-grey", failed ? "i-alert" : "i-search",
+      () => { $("findDialog").close(); openForm(null, {}); }));
+    return;
+  }
+  box.replaceChildren(el("ul", { class: "find-list" }, ...list.map(rec => {
+    const th = el("span", { class: "th" });
+    const u = safeUrl(rec.thumb);
+    if (u) { const img = el("img", { src: u, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }); img.addEventListener("error", () => img.remove(), { once: true }); th.append(img); }
+    const meta = [rec.year, countryName(rec.country), rec.format].filter(Boolean).join(" · ");
+    return el("li", {}, el("button", { class: "find-item", type: "button", onclick: () => pickFound(rec) }, th,
+      el("span", { class: "tx" }, el("b", { text: rec.title }), el("span", { text: rec.artist }), meta ? el("small", { text: meta }) : null)));
+  })));
+}
+function pickFound(rec) {
+  $("findDialog").close();
+  foundFrom = "find";
+  const own = rec.barcode ? albums.find(a => a.barcode && a.barcode === rec.barcode) : null;
+  showFound(rec, rec.barcode || "", false, own);
+}
+$("openFindBtn").addEventListener("click", () => openFind());
+$("findForm").addEventListener("submit", (e) => { e.preventDefault(); runFind(); });
+$("findDialog").addEventListener("close", modalClosed);
+$("findDialog").addEventListener("click", (e) => { if (e.target === $("findDialog")) $("findDialog").close(); });
+
 /* ---------- Zaproszenie przez link (dla każdego zalogowanego) ---------- */
 function openInvite() {
   const I = COPY.invite;
@@ -2068,7 +2205,7 @@ function showFound(rec, code, failed, own) {
     el("div", {}, el("small", { text: COPY.scan.labels.artist }), el("b", { text: rec.artist })),
     el("div", {}, el("small", { text: COPY.scan.labels.title }), el("b", { text: rec.title })),
     ...releaseFacts(rec),
-    el("div", { class: "src" }, el("span", { text: `${COPY.scan.labels.code} ${code}` }),
+    el("div", { class: "src" }, el("span", { text: code ? `${COPY.scan.labels.code} ${code}` : "" }),
       el("span", { class: "src-links" },
         rec.master_url ? el("a", { href: rec.master_url, target: "_blank", rel: "noopener", text: COPY.scan.labels.allEditions }) : null,
         el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: sourceLabel(rec.source_url) }))));
@@ -2093,7 +2230,7 @@ function showFound(rec, code, failed, own) {
 }
 function closeFound() { const was = !$("found").hidden; $("found").hidden = true; document.body.style.overflow = ""; if (was) modalClosed(); }
 document.querySelector("[data-found-close]").addEventListener("click", closeFound);
-$("rescanBtn").addEventListener("click", () => { closeFound(); openScanner(); });
+$("rescanBtn").addEventListener("click", () => { closeFound(); if (foundFrom === "find") openFind(lastFindQuery); else openScanner(); });
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -2104,7 +2241,7 @@ document.addEventListener("keydown", (e) => {
 /* ---------- Przycisk „wstecz” (Android, gest cofania) zamyka okno zamiast wychodzić z aplikacji ----------
    Otwarte okno = jeden wpis w historii. Kilka okien po kolei dzieli ten sam wpis. */
 let ignorePop = false;
-const anyModalOpen = () => $("albumDialog").open || $("detailDialog").open || $("inviteDialog").open || !$("scanner").hidden || !$("found").hidden;
+const anyModalOpen = () => $("albumDialog").open || $("detailDialog").open || $("inviteDialog").open || $("findDialog").open || !$("scanner").hidden || !$("found").hidden;
 function modalOpened() {
   if (backPending) return;                     // cofanie w toku — po nim popstate doda wpis z powrotem
   if (history.state && history.state.modal) return;
@@ -2131,6 +2268,7 @@ window.addEventListener("popstate", async () => {
   }
   if ($("detailDialog").open) $("detailDialog").close();
   if ($("inviteDialog").open) $("inviteDialog").close();
+  if ($("findDialog").open) $("findDialog").close();
 });
 
 /* =====================================================================

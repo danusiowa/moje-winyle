@@ -3,7 +3,10 @@
 // DISCOGS_TOKEN w Supabase, więc nigdy nie trafia do przeglądarki ani do repo.
 // Wpuszcza tylko zalogowanych użytkowników VinyLog.
 //
-// Odpowiedź: { found: true, artist, title, year, country, label, catno, formats,
+// Druga funkcja tej samej usługi: wyszukiwanie po tekście (tytuł, wykonawca).
+// Wejście { q: "fleetwood rumours" } → { results: [ …do 15 wydań winylowych… ] }
+//
+// Odpowiedź (kod): { found: true, artist, title, year, country, label, catno, formats,
 //              format_quantity, image_url, source_url, master_url } albo { found: false }
 // Funkcja zwraca surowe dane Discogs; ujednolicenie (kraj, format, wytwórnia…)
 // robi aplikacja w jednym miejscu, tak samo dla Discogs i MusicBrainz.
@@ -53,8 +56,36 @@ Deno.serve(async (req) => {
   const token = Deno.env.get("DISCOGS_TOKEN");
   if (!token) return json(req, { error: "missing DISCOGS_TOKEN" }, 500);
 
-  let code = "";
-  try { code = String((await req.json()).barcode ?? "").replace(/\D/g, ""); } catch { /* puste */ }
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* puste */ }
+  const headers = { Authorization: `Discogs token=${token}`, "User-Agent": "VinyLog/1.0 +https://danusiowa.github.io/vinylog/" };
+
+  // ----- wyszukiwanie po tekście -----
+  if (typeof body.q === "string") {
+    const q = body.q.trim().slice(0, 120);
+    if (q.length < 2) return json(req, { error: "short query" }, 400);
+    const r = await fetch(`https://api.discogs.com/database/search?type=release&format=Vinyl&per_page=15&q=${encodeURIComponent(q)}`, { headers });
+    if (!r.ok) return json(req, { error: `discogs ${r.status}` }, 502);
+    const { results = [] } = await r.json();
+    return json(req, {
+      results: results.map((rel: Record<string, any>) => {
+        const { artist, title } = splitTitle(rel.title ?? "");
+        const img = rel.cover_image && !/spacer\.gif/.test(rel.cover_image) ? rel.cover_image : null;
+        const thumb = rel.thumb && !/spacer\.gif/.test(rel.thumb) ? rel.thumb : img;
+        const bc = (rel.barcode ?? []).map((b: string) => String(b).replace(/\D/g, "")).find((b: string) => b.length >= 12 && b.length <= 13) ?? null;
+        return {
+          artist: artist || "Nieznany wykonawca", title: title || "Bez tytułu",
+          year: rel.year ?? null, country: rel.country ?? null, label: (rel.label ?? [])[0] ?? null, catno: rel.catno ?? null,
+          formats: rel.format ?? [], format_quantity: rel.format_quantity ?? null, barcode: bc,
+          image_url: img, thumb, source_url: `https://www.discogs.com/release/${rel.id}`,
+          master_url: rel.master_id ? `https://www.discogs.com/master/${rel.master_id}` : null,
+        };
+      }),
+    });
+  }
+
+  // ----- wyszukiwanie po kodzie kreskowym -----
+  const code = String(body.barcode ?? "").replace(/\D/g, "");
   if (code.length < 8 || code.length > 14) return json(req, { error: "bad barcode" }, 400);
 
   // Warianty 12/13 cyfr (UPC ↔ EAN z wiodącym zerem).
@@ -64,9 +95,7 @@ Deno.serve(async (req) => {
 
   for (const v of variants) {
     const url = `https://api.discogs.com/database/search?type=release&barcode=${v}&per_page=25`;
-    const r = await fetch(url, {
-      headers: { Authorization: `Discogs token=${token}`, "User-Agent": "VinyLog/1.0 +https://danusiowa.github.io/vinylog/" },
-    });
+    const r = await fetch(url, { headers });
     if (!r.ok) return json(req, { error: `discogs ${r.status}` }, 502);
     const { results = [] } = await r.json();
     if (!results.length) continue;
