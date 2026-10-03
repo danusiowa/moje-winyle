@@ -47,6 +47,17 @@ img{max-width:100%}
 .input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
 .input::placeholder{color:#9A958D}
 .hint{font-size:13px;color:var(--muted)}
+/* Skanowanie tylko na telefonie/tablecie: na komputerze (mysz, brak dotyku) chowamy kafel i separator. */
+@media (hover:hover) and (pointer:fine){#scanBlock{display:none!important}}
+.more{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.more summary{cursor:pointer;padding:14px 16px;font-size:14px;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+.more[open] summary::after{transform:rotate(-135deg)}
+.more summary .hint{font-weight:400}
+.more-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 16px}
+.more-grid .wide{grid-column:1/-1}
+@media (max-width:360px){.more-grid{grid-template-columns:1fr}}
 .form-error{font-size:14px;color:var(--danger);min-height:20px}
 .icon{width:22px;height:22px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
@@ -196,6 +207,10 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .facts b{font-size:17px}
 .facts .src{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .facts .src a{color:var(--muted)}
+.facts .src-links{display:flex;gap:12px;flex-wrap:wrap}
+.facts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
+.facts-grid > div:last-child:nth-child(odd){grid-column:1/-1}
+.facts-grid span{font-size:15px;font-weight:600}
 
 /* ---------- loader ---------- */
 .loader{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(253,251,248,.72);backdrop-filter:blur(3px)}
@@ -407,6 +422,17 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <span class="hint" id="imgHint"></span>
       <img id="fPreview" class="cover-preview" alt="Podgląd okładki" hidden>
     </div>
+    <details class="more" id="moreBlock">
+      <summary>Szczegóły wydania <span class="hint">opcjonalnie</span></summary>
+      <div class="more-grid">
+        <div class="field"><label for="fYear">Rok</label><input class="input" id="fYear" inputmode="numeric" maxlength="4" placeholder="np. 1977"></div>
+        <div class="field"><label for="fCountry">Kraj</label><input class="input" id="fCountry" maxlength="60" placeholder="np. Wielka Brytania" list="countryList"></div>
+        <div class="field"><label for="fLabel">Wytwórnia</label><input class="input" id="fLabel" maxlength="120" placeholder="np. Warner Bros."></div>
+        <div class="field"><label for="fCatno">Nr katalogowy</label><input class="input" id="fCatno" maxlength="60" placeholder="np. K 56344"></div>
+        <div class="field wide"><label for="fFormat">Format</label><input class="input" id="fFormat" maxlength="120" placeholder='np. LP 12", reedycja, 180 g'></div>
+      </div>
+      <datalist id="countryList"></datalist>
+    </details>
     <div class="field">
       <span class="lbl" id="statusLbl">Dodaj do</span>
       <div class="seg" role="group" aria-labelledby="statusLbl">
@@ -414,7 +440,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
         <button type="button" data-status="wanted" aria-pressed="false">Po wypłacie</button>
       </div>
     </div>
-    <input type="hidden" id="fBarcode"><input type="hidden" id="fSource">
+    <input type="hidden" id="fBarcode"><input type="hidden" id="fSource"><input type="hidden" id="fMaster">
     <div class="form-error" id="formError" role="alert"></div>
     <div class="sheet-actions">
       <button class="btn" type="submit" id="saveBtn"></button>
@@ -538,7 +564,8 @@ const COPY = {
     addAnyway: "Dodaj mimo to",
     save: "Zapisz zmiany",
     missing: "Brakuje wykonawcy lub tytułu. Telepatii jeszcze nie wdrożyliśmy.",
-    badUrl: "Link do okładki musi zaczynać się od http:// lub https://."
+    badUrl: "Link do okładki musi zaczynać się od http:// lub https://.",
+    badYear: "Rok wygląda podejrzanie. Winyle tłoczy się od jakichś stu lat."
   },
   have: "Mam!",
   toast: {
@@ -574,7 +601,8 @@ const COPY = {
     addOwned: "Dodaj do kolekcji",
     addWanted: "Dodaj do „Po wypłacie”",
     notThis: "To nie ta. Popraw ręcznie",
-    labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło:" }
+    labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło:", allEditions: "wszystkie wydania",
+              edition: "Wydanie", label: "Wytwórnia · nr kat.", format: "Format" }
   },
   loader: {
     // null = losowo z listy default
@@ -757,7 +785,7 @@ async function enterApp() {
 }
 async function loadAlbums() {
   const { data, error } = await withLoader(null, () =>
-    db.from("albums").select("id, artist, title, image_url, source_url, barcode, status, created_at").order("created_at", { ascending: false }));
+    db.from("albums").select("id, artist, title, image_url, source_url, barcode, status, created_at, year, country, label, catalog_number, format, master_url").order("created_at", { ascending: false }));
   loadFailed = !!error;
   albums = error ? [] : (data || []);
   render();
@@ -883,6 +911,12 @@ function openForm(a = null, prefill = {}) {
   const src = a || prefill;
   $("fArtist").value = src.artist || ""; $("fTitle").value = src.title || "";
   $("fImage").value = src.image_url || ""; $("fBarcode").value = src.barcode || ""; $("fSource").value = src.source_url || "";
+  $("fMaster").value = src.master_url || "";
+  $("fYear").value = src.year || ""; $("fCountry").value = countryName(src.country);
+  $("fLabel").value = src.label || ""; $("fCatno").value = src.catalog_number || ""; $("fFormat").value = src.format || "";
+  if (!$("countryList").childElementCount)
+    $("countryList").append(...[...new Set(Object.values(COUNTRY_FROM_NAME))].map(countryName).sort((a, b) => a.localeCompare(b, "pl")).map(n => el("option", { value: n })));
+  $("moreBlock").open = !!(src.year || src.country || src.label || src.catalog_number || src.format);
   setFormStatus(src.status || (a ? "owned" : view));
   updatePreview();
   if (!$("albumDialog").open) $("albumDialog").showModal();
@@ -898,12 +932,17 @@ $("albumForm").addEventListener("submit", async (e) => {
   const payload = {
     artist: $("fArtist").value.trim(), title: $("fTitle").value.trim(),
     image_url: $("fImage").value.trim() || null, status: formStatus,
-    barcode: $("fBarcode").value || null, source_url: $("fSource").value || null
+    barcode: $("fBarcode").value || null, source_url: $("fSource").value || null, master_url: $("fMaster").value || null,
+    // Te same reguły co dla danych ze skanu, więc ręcznie wpisane pola wyglądają tak samo.
+    year: cleanYear($("fYear").value), country: toCountryCode($("fCountry").value),
+    label: cleanName($("fLabel").value), catalog_number: cleanCatno($("fCatno").value),
+    format: $("fFormat").value.replace(/\s+/g, " ").trim() || null
   };
   if (!payload.artist || !payload.title) { $("formError").textContent = COPY.form.missing; return; }
+  if ($("fYear").value.trim() && !payload.year) { $("formError").textContent = COPY.form.badYear; return; }
   if (payload.image_url && !safeUrl(payload.image_url)) { $("formError").textContent = COPY.form.badUrl; return; }
   if (editing) {
-    delete payload.barcode; delete payload.source_url;
+    delete payload.barcode; delete payload.source_url; delete payload.master_url;
     const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update(payload).eq("id", editing.id));
     if (error) { toast("error", COPY.toast.saveError); return; }
     Object.assign(editing, payload); $("albumDialog").close(); render(); toast("success", COPY.toast.updated);
@@ -1053,27 +1092,39 @@ async function lookup(code) {
 }
 // Kolejność: Discogs (przez funkcję w Supabase, token zostaje na serwerze) → MusicBrainz.
 // Błąd jednego źródła nie przerywa szukania; „błąd” pokazujemy tylko, gdy padły oba.
+// Każde źródło oddaje dane w tym samym surowym kształcie, a normalizeRelease()
+// ujednolica je w jednym miejscu — wynik wygląda tak samo bez względu na źródło.
 async function searchBarcode(code) {
   let rec = null, errors = 0;
   try { rec = await searchDiscogs(code); } catch (err) { console.warn(err); errors++; }
   if (rec && rec.image_url) return rec;
   let mb = null;
   try { mb = await searchMusicBrainz(code); } catch (err) { console.warn(err); errors++; }
-  if (rec) return { ...rec, image_url: mb?.image_url || null };   // Discogs bez okładki → okładka z MusicBrainz
+  // Discogs bez okładki → bierzemy tylko okładkę z MusicBrainz (reszta mogłaby dotyczyć innego tłoczenia).
+  if (rec) return { ...rec, image_url: mb?.image_url || null };
   if (mb) return mb;
   if (errors === 2) throw new Error("all sources failed");
   return null;
 }
+
 async function searchDiscogs(code) {
   const { data, error } = await db.functions.invoke("discogs-barcode", { body: { barcode: code } });
   if (error) throw error;
   if (!data?.found) return null;
-  return { artist: data.artist, title: data.title, barcode: code, source_url: data.source_url, image_url: data.image_url || null };
+  const f = (data.formats || []).map(String);
+  const has = (re) => f.some(x => re.test(x));
+  return normalizeRelease({
+    artist: data.artist, title: data.title, barcode: code,
+    year: data.year, country: data.country, label: data.label, catno: data.catno,
+    medium: f[0] || null,
+    count: Number(data.format_quantity) || 1,
+    size: (f.find(x => /^\d{1,2}"$/.test(x)) || null),
+    kind: has(/^LP$/) ? "LP" : has(/^EP$/) ? "EP" : has(/^(Single|Maxi-Single)$/) ? "Single" : has(/^Album$/) ? "Album" : null,
+    tags: f,
+    image_url: data.image_url, source_url: data.source_url, master_url: data.master_url
+  });
 }
-function sourceLabel(url) {
-  const name = /discogs\.com/.test(url || "") ? "Discogs" : "MusicBrainz";
-  return `${COPY.scan.labels.source} ${name}`;
-}
+
 async function searchMusicBrainz(code) {
   const variants = new Set([code]);
   if (code.length === 12) variants.add("0" + code);
@@ -1086,11 +1137,121 @@ async function searchMusicBrainz(code) {
   const isVinyl = (rel) => (rel.media || []).some(m => /vinyl/i.test(m.format || ""));
   const rel = releases.find(isVinyl) || releases[0];
   const artist = (rel["artist-credit"] || []).map(c => (c.name || c.artist?.name || "") + (c.joinphrase || "")).join("").trim();
-  return {
-    artist: artist || "Nieznany wykonawca", title: rel.title, barcode: code,
+  const media = rel.media || [];
+  const fmt = media[0]?.format || "";                       // np. 12" Vinyl
+  const li = (rel["label-info"] || [])[0] || {};
+  const rg = rel["release-group"] || {};
+  return normalizeRelease({
+    artist, title: rel.title, barcode: code,
+    year: (rel.date || "").slice(0, 4), country: rel.country, label: li.label?.name, catno: li["catalog-number"],
+    medium: fmt.replace(/^\d{1,2}"\s*/, "") || null,
+    count: media.length || 1,
+    size: (fmt.match(/^\d{1,2}"/) || [null])[0],
+    kind: rg["primary-type"] || null,
+    tags: rg["secondary-types"] || [],
+    image_url: await findCover(rel),
     source_url: `https://musicbrainz.org/release/${rel.id}`,
-    image_url: await findCover(rel)
+    master_url: rg.id ? `https://musicbrainz.org/release-group/${rg.id}` : null
+  });
+}
+
+/* ---------- Ujednolicanie danych wydania ---------- */
+// Kraje zapisujemy jako kod ISO (MusicBrainz daje kod, Discogs nazwę po angielsku).
+const COUNTRY_FROM_NAME = {
+  "uk": "GB", "united kingdom": "GB", "uk & europe": "XE", "uk & ireland": "GB", "us": "US", "usa": "US", "usa & canada": "US",
+  "europe": "XE", "worldwide": "XW", "germany": "DE", "france": "FR", "poland": "PL", "japan": "JP", "netherlands": "NL",
+  "italy": "IT", "canada": "CA", "australia": "AU", "spain": "ES", "sweden": "SE", "norway": "NO", "denmark": "DK",
+  "finland": "FI", "belgium": "BE", "austria": "AT", "switzerland": "CH", "ireland": "IE", "portugal": "PT", "greece": "GR",
+  "russia": "RU", "ussr": "SU", "czech republic": "CZ", "czechia": "CZ", "czechoslovakia": "XC", "hungary": "HU",
+  "yugoslavia": "YU", "german democratic republic (gdr)": "DD", "brazil": "BR", "argentina": "AR", "mexico": "MX",
+  "new zealand": "NZ", "south africa": "ZA", "south korea": "KR", "korea": "KR", "taiwan": "TW", "israel": "IL",
+  "turkey": "TR", "ukraine": "UA", "romania": "RO", "bulgaria": "BG", "croatia": "HR", "slovenia": "SI", "slovakia": "SK",
+  "lithuania": "LT", "latvia": "LV", "estonia": "EE", "india": "IN", "china": "CN", "hong kong": "HK", "scandinavia": "XS"
+};
+const COUNTRY_SPECIAL = { XE: "Europa", XW: "Świat", SU: "ZSRR", XC: "Czechosłowacja", YU: "Jugosławia", DD: "NRD", XS: "Skandynawia" };
+const regionNames = (() => { try { return new Intl.DisplayNames(["pl"], { type: "region" }); } catch { return null; } })();
+function countryName(code) {
+  if (!code) return "";
+  if (COUNTRY_SPECIAL[code]) return COUNTRY_SPECIAL[code];
+  if (/^[A-Z]{2}$/.test(code) && regionNames) { try { return regionNames.of(code) || code; } catch { /* nieznany kod */ } }
+  return code;
+}
+// Polskie nazwy → kod, żeby ręcznie wpisany kraj („Wielka Brytania”) też trafił do bazy jako GB.
+const COUNTRY_FROM_PL = Object.fromEntries([...new Set([...Object.values(COUNTRY_FROM_NAME), "PL", "GB", "US", "DE"])]
+  .map(c => [norm(countryName(c)), c]));
+function toCountryCode(v) {
+  const s = String(v || "").trim();
+  if (!s) return null;
+  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase() === "UK" ? "GB" : s.toUpperCase();
+  return COUNTRY_FROM_NAME[s.toLowerCase()] || COUNTRY_FROM_PL[norm(s)] || s;
+}
+
+// Format w jednej postaci, np. „2×LP 12", reedycja, 180 g”.
+const MEDIUM_PL = { vinyl: "Winyl", cd: "CD", cassette: "Kaseta", "dvd": "DVD", "file": "Plik" };
+const FORMAT_TAGS = [
+  [/^reissue$/i, "reedycja"], [/^repress$/i, "dodruk"], [/^remaster(ed)?$/i, "remaster"],
+  [/^limited edition$/i, "edycja limitowana"], [/^deluxe edition$/i, "edycja deluxe"], [/^numbered$/i, "numerowana"],
+  [/^compilation$/i, "kompilacja"], [/^picture disc$/i, "picture disc"], [/^(\d{3}) ?(gram|g)$/i, (m) => m[1] + " g"],
+  [/^mono$/i, "mono"], [/^live$/i, "koncertowa"], [/^soundtrack$/i, "ścieżka dźwiękowa"], [/^unofficial release$/i, "nieoficjalne"]
+];
+function formatString({ medium, count, size, kind, tags }) {
+  const isVinyl = /vinyl/i.test(medium || "") || !!size;
+  let core;
+  if (isVinyl) {
+    const k = /^(LP|Album)$/i.test(kind || "") ? "LP" : /^EP$/i.test(kind || "") ? "EP" : /^single$/i.test(kind || "") ? "Singel" : "Winyl";
+    core = (count > 1 ? count + "×" : "") + k + (size ? " " + size : "");
+  } else {
+    const m = MEDIUM_PL[String(medium || "").toLowerCase()] || (medium || "").trim();
+    core = m ? (count > 1 ? count + "×" : "") + m : "";
+  }
+  const extras = [];
+  for (const t of tags || []) for (const [re, out] of FORMAT_TAGS) {
+    const m = String(t).trim().match(re);
+    if (m) { const v = typeof out === "function" ? out(m) : out; if (!extras.includes(v)) extras.push(v); }
+  }
+  return [core, ...extras].filter(Boolean).join(", ") || null;
+}
+function cleanName(s) {        // Discogs dopisuje numery do powtarzających się nazw: „Polydor (2)”, „Prince*”
+  const v = String(s || "").replace(/\s*\(\d+\)$/, "").replace(/\*$/, "").replace(/\s+/g, " ").trim();
+  return v && !/^not on label/i.test(v) ? v : null;
+}
+function cleanCatno(s) {
+  const v = String(s || "").replace(/\s+/g, " ").trim();
+  return v && !/^\[?none\]?$/i.test(v) ? v : null;
+}
+function cleanYear(y) {
+  const n = parseInt(y, 10);
+  return n >= 1900 && n <= new Date().getFullYear() + 1 ? n : null;
+}
+function normalizeRelease(raw) {
+  return {
+    artist: cleanName(raw.artist) || "Nieznany wykonawca",
+    title: String(raw.title || "").trim() || "Bez tytułu",
+    barcode: raw.barcode || null,
+    year: cleanYear(raw.year),
+    country: toCountryCode(raw.country),
+    label: cleanName(raw.label),
+    catalog_number: cleanCatno(raw.catno),
+    format: formatString(raw),
+    image_url: raw.image_url || null,
+    source_url: raw.source_url || null,
+    master_url: raw.master_url || null
   };
+}
+// Wiersze „Wydanie / Wytwórnia / Format” — tylko te, które mają dane.
+function releaseFacts(r) {
+  const L = COPY.scan.labels;
+  const rows = [
+    [L.edition, [r.year, countryName(r.country)].filter(Boolean).join(" · ")],
+    [L.label, [r.label, r.catalog_number].filter(Boolean).join(" · ")],
+    [L.format, r.format]
+  ].filter(([, v]) => v);
+  if (!rows.length) return [];
+  return [el("div", { class: "facts-grid" }, ...rows.map(([k, v]) => el("div", {}, el("small", { text: k }), el("span", { text: v }))))];
+}
+function sourceLabel(url) {
+  const name = /discogs\.com/.test(url || "") ? "Discogs" : "MusicBrainz";
+  return `${COPY.scan.labels.source} ${name}`;
 }
 async function findCover(rel) {
   const tryCAA = async (path) => {
@@ -1126,8 +1287,11 @@ function showFound(rec, code, failed, own) {
   const facts = el("div", { class: "facts" },
     el("div", {}, el("small", { text: COPY.scan.labels.artist }), el("b", { text: rec.artist })),
     el("div", {}, el("small", { text: COPY.scan.labels.title }), el("b", { text: rec.title })),
+    ...releaseFacts(rec),
     el("div", { class: "src" }, el("span", { text: `${COPY.scan.labels.code} ${code}` }),
-      el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: sourceLabel(rec.source_url) })));
+      el("span", { class: "src-links" },
+        rec.master_url ? el("a", { href: rec.master_url, target: "_blank", rel: "noopener", text: COPY.scan.labels.allEditions }) : null,
+        el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: sourceLabel(rec.source_url) }))));
   body.append(head, record, facts);
   if (dup) {
     const [t, x] = dup.status === "wanted" ? ["Masz to w „Po wypłacie”.", "Dodanie do kolekcji po prostu ją tam przeniesie."] : COPY.toast.duplicate;
