@@ -98,6 +98,23 @@ img{max-width:100%}
 .search{position:relative;width:420px;max-width:100%}
 .search .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted);pointer-events:none}
 .search .input{padding-left:44px}
+.search.has-value .input{padding-right:46px}
+.search input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:18px;background:var(--sunk);display:grid;place-items:center;color:var(--ink)}
+.search-clear .icon{width:16px;height:16px;position:static;transform:none;color:currentColor}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.sort{position:relative}
+.sort select{appearance:none;-webkit-appearance:none;min-height:50px;padding:0 40px 0 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232E2F33' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 16px center;font:inherit;font-size:15px;font-weight:600;color:var(--ink)}
+.sort select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
+/* Błąd przy konkretnym polu */
+.input.invalid{border-color:var(--danger);box-shadow:0 0 0 4px var(--danger-soft)}
+.field-error{font-size:13px;color:var(--danger);font-weight:600}
+/* Pokaż / ukryj hasło */
+.pw{position:relative}
+.pw .input{padding-right:88px}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;font-weight:700;font-size:14px;color:var(--muted)}
+.pw-toggle:hover{color:var(--ink)}
+.toast{cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:40px 28px}
 .card{display:flex;flex-direction:column;gap:8px;min-width:0}
 .card{position:relative}
@@ -282,6 +299,10 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
   .bottomnav #addBtnNav{color:var(--ink);font-weight:700}
   .bottomnav #addBtnNav .icon{background:var(--ink);color:#fff}
   .toasts{left:16px;right:16px;width:auto;top:calc(12px + env(safe-area-inset-top))}
+  .tools{width:100%;flex-wrap:nowrap}
+  .tools .search{flex:1 1 auto;min-width:0;width:auto}
+  .sort select{padding:0 32px 0 14px;font-size:14px;background-position:right 12px center}
+  .tools .sort{flex:0 0 auto}
   dialog{width:100%;max-width:none;max-height:92svh;margin:auto 0 0;border-radius:22px 22px 0 0}
   dialog.confirm{width:calc(100vw - 32px);margin:auto;border-radius:20px}
   .sheet{padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
@@ -402,10 +423,22 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
         <h2 class="display" id="viewTitle">Moja kolekcja</h2>
         <p class="sub" id="viewSub"></p>
       </div>
-      <div class="search">
-        <label for="search" class="sr">Szukaj</label>
-        <svg class="icon"><use href="#i-search"/></svg>
-        <input class="input" id="search" type="search" autocomplete="off">
+      <div class="tools">
+        <div class="search">
+          <label for="search" class="sr">Szukaj</label>
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input class="input" id="search" type="search" autocomplete="off" enterkeyhint="search">
+          <button type="button" class="search-clear" id="searchClear" aria-label="Wyczyść wyszukiwanie" hidden><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+        <label class="sort"><span class="sr">Sortuj według</span>
+          <select id="sort">
+            <option value="new">Najnowsze</option>
+            <option value="old">Najstarsze</option>
+            <option value="artist">Wykonawca</option>
+            <option value="title">Tytuł</option>
+            <option value="year">Rok</option>
+          </select>
+        </label>
       </div>
     </div>
     <div class="grid" id="grid" aria-live="polite"></div>
@@ -567,8 +600,8 @@ const COPY = {
     loggedOut: ["Wylogowano", "Z nałogu wylogować się nie da."]
   },
   views: {
-    owned:  { title: "Moja kolekcja", search: "Szukaj wykonawcy lub tytułu" },
-    wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”" }
+    owned:  { title: "Moja kolekcja", search: "Szukaj wykonawcy lub tytułu", searchShort: "Szukaj płyty" },
+    wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”", searchShort: "Szukaj na liście" }
   },
   // [liczba, komentarz]
   // n = liczba egzemplarzy (płyta w 2 egzemplarzach liczy się podwójnie — tyle stoi na półce)
@@ -585,8 +618,8 @@ const COPY = {
   empty: {
     owned:    ["Zero płyt.", "Gratulacje, finanse jeszcze żyją.", "Dodaj pierwszą"],
     wanted:   ["Zero planów zakupowych.", "Podejrzanie rozsądnie."],
-    noResult: ["Nie masz.", "Tak, to jest dokładnie ten moment, w którym zaczyna się problem."],
-    noResultWanted: ["Nie ma tego na liście.", "Ale zawsze może się pojawić. Zwykle się pojawia."],
+    noResult: ["Nie masz.", "Tak, to jest dokładnie ten moment, w którym zaczyna się problem.", "Wyczyść wyszukiwanie"],
+    noResultWanted: ["Nie ma tego na liście.", "Ale zawsze może się pojawić. Zwykle się pojawia.", "Wyczyść wyszukiwanie"],
     loadError: ["Nie udało się pobrać kolekcji.", "Internet wziął przerwę. Odśwież stronę."]
   },
   form: {
@@ -607,6 +640,12 @@ const COPY = {
     plusOne: (n) => `+1 egzemplarz (będzie ${n})`,
     save: "Zapisz zmiany",
     missing: "Brakuje wykonawcy lub tytułu. Telepatii jeszcze nie wdrożyliśmy.",
+    needArtist: "Wpisz wykonawcę. Telepatii jeszcze nie wdrożyliśmy.",
+    needTitle: "Wpisz tytuł. Bez niego to tylko kółko z dziurką.",
+    statusAdd: "Dodaj do", statusEdit: "Lista",
+    discardTitle: "Odrzucić zmiany?",
+    discardText: "Wpisane dane przepadną. Jak paragon w praniu.",
+    discardYes: "Odrzuć", discardNo: "Wróć do formularza",
     badUrl: "Link do okładki musi zaczynać się od http:// lub https://.",
     badYear: "Rok wygląda podejrzanie. Winyle tłoczy się od jakichś stu lat."
   },
@@ -821,9 +860,21 @@ function toast(kind, pair) {
   // Gdy otwarte jest okno (karta płyty, formularz), powiadomienie idzie do niego — inaczej chowa się pod przyciemnieniem.
   const host = [...document.querySelectorAll("dialog[open]")].pop() || document.body;
   if ($("toasts").parentElement !== host) host.append($("toasts"));
+  t.addEventListener("click", () => { t.classList.add("out"); setTimeout(() => t.remove(), 250); });
   $("toasts").append(t);
   setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 250); }, kind === "error" ? 6500 : 4500);
 }
+
+/* ---------- Pokaż / ukryj hasło ---------- */
+document.querySelectorAll('.auth input[type="password"]').forEach(inp => {
+  const wrap = el("div", { class: "pw" }); inp.replaceWith(wrap); wrap.append(inp);
+  const btn = el("button", { type: "button", class: "pw-toggle", text: "Pokaż", "aria-label": "Pokaż hasło", "aria-pressed": "false" });
+  btn.addEventListener("click", () => {
+    const show = inp.type === "password"; inp.type = show ? "text" : "password";
+    btn.textContent = show ? "Ukryj" : "Pokaż"; btn.setAttribute("aria-label", show ? "Ukryj hasło" : "Pokaż hasło"); btn.setAttribute("aria-pressed", String(show));
+  });
+  wrap.append(btn);
+});
 
 /* =====================================================================
    SUPABASE + AUTORYZACJA
@@ -911,7 +962,7 @@ db.auth.onAuthStateChange((event, session) => {
     enterApp();
   }
   if (event === "SIGNED_OUT") {
-    entered = false; albums = []; $("search").value = ""; showScreen(false); authMode("login");
+    entered = false; albums = []; $("search").value = ""; syncSearchClear(); showScreen(false); authMode("login");
     toast("deleted", COPY.auth.loggedOut);
   }
 });
@@ -1019,12 +1070,30 @@ function setView(v, doRender = true) {
   });
   $("viewTitle").replaceChildren(COPY.views[v].title);
   if (v === "wanted") $("viewTitle").append(svgUse("i-heart"));
-  $("search").placeholder = COPY.views[v].search;
+  $("search").placeholder = isDesktop() ? COPY.views[v].search : COPY.views[v].searchShort;
   if (doRender) render();
 }
-document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { $("search").value = ""; setView(b.dataset.view); window.scrollTo({ top: 0 }); }));
+document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { $("search").value = ""; syncSearchClear(); setView(b.dataset.view); window.scrollTo({ top: 0 }); }));
 document.querySelector("[data-view-link]").addEventListener("click", (e) => { e.preventDefault(); setView("owned"); });
-$("search").addEventListener("input", () => render());
+function syncSearchClear() { const has = !!$("search").value; $("searchClear").hidden = !has; $("search").parentElement.classList.toggle("has-value", has); }
+$("search").addEventListener("input", () => { syncSearchClear(); render(); });
+$("searchClear").addEventListener("click", () => { $("search").value = ""; syncSearchClear(); render(); $("search").focus(); });
+// Sortowanie — wybór zapamiętany w tej przeglądarce (gdy się da).
+let sortMode = "new";
+try { sortMode = localStorage.getItem("vinylog.sort") || "new"; } catch {}
+$("sort").value = sortMode; if ($("sort").value !== sortMode) { sortMode = "new"; $("sort").value = "new"; }
+$("sort").addEventListener("change", () => { sortMode = $("sort").value; try { localStorage.setItem("vinylog.sort", sortMode); } catch {} render(); });
+function sortAlbums(list) {
+  const cmp = (x, y) => String(x || "").localeCompare(String(y || ""), "pl", { sensitivity: "base", ignorePunctuation: true });
+  const byDate = (a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  const out = list.slice();
+  if (sortMode === "old") out.sort((a, b) => -byDate(a, b));
+  else if (sortMode === "artist") out.sort((a, b) => cmp(a.artist, b.artist) || cmp(a.title, b.title));
+  else if (sortMode === "title") out.sort((a, b) => cmp(a.title, b.title) || cmp(a.artist, b.artist));
+  else if (sortMode === "year") out.sort((a, b) => (a.year || 9999) - (b.year || 9999) || cmp(a.artist, b.artist));
+  else out.sort(byDate);
+  return out;
+}
 
 function coverNode(a) {
   const wrap = el("div", { class: "cover" });
@@ -1053,7 +1122,9 @@ function render() {
   const grid = $("grid");
   const list = albums.filter(a => (a.status || "owned") === view);
   const q = norm($("search").value);
-  const shown = q ? list.filter(a => norm(a.artist + " " + a.title).includes(q)) : list;
+  // Szukamy też po wytwórni, roku, numerze katalogowym, formacie i kraju.
+  const hay = (a) => norm([a.artist, a.title, a.label, a.year, a.catalog_number, a.format, countryName(a.country)].filter(Boolean).join(" "));
+  const shown = sortAlbums(q ? list.filter(a => hay(a).includes(q)) : list);
   renderCount();
 
   if (loadFailed) { grid.replaceChildren(emptyNode(COPY.empty.loadError, "b-danger", "i-alert")); return; }
@@ -1064,7 +1135,8 @@ function render() {
     return;
   }
   if (!shown.length) {
-    grid.replaceChildren(emptyNode(view === "owned" ? COPY.empty.noResult : COPY.empty.noResultWanted, "b-grey", "i-search"));
+    grid.replaceChildren(emptyNode(view === "owned" ? COPY.empty.noResult : COPY.empty.noResultWanted, "b-grey", "i-search",
+      () => { $("search").value = ""; syncSearchClear(); render(); $("search").focus(); }));
     return;
   }
   grid.replaceChildren(...shown.map(a => {
@@ -1184,11 +1256,15 @@ function openForm(a = null, prefill = {}) {
   $("moreBlock").open = !!(src.year || src.country || src.label || src.catalog_number || src.format);
   setFormStatus(src.status || (a ? "owned" : view));
   updatePreview();
-  if (!$("albumDialog").open) $("albumDialog").showModal();
-  setTimeout(() => (src.artist ? $("fTitle") : $("fArtist")).focus(), 60);
+  if (!$("albumDialog").open) { $("albumDialog").showModal(); modalOpened(); }
+  $("statusLbl").textContent = a ? COPY.form.statusEdit : COPY.form.statusAdd;
+  clearFieldErrors();
+  formSnapshot = formState();
+  // Na telefonie nie otwieramy klawiatury od razu — zasłoniłaby pół formularza.
+  if (isDesktop() && !a) setTimeout(() => (src.artist ? $("fTitle") : $("fArtist")).focus(), 60);
 }
-$("albumDialog").addEventListener("click", (e) => { if (e.target === $("albumDialog")) $("albumDialog").close(); });
-document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+$("albumDialog").addEventListener("click", (e) => { if (e.target === $("albumDialog")) requestCloseForm(); });
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => { const d = b.closest("dialog"); if (d.id === "albumDialog") requestCloseForm(); else d.close(); }));
 $("addBtnTop").addEventListener("click", () => openForm());
 $("addBtnNav").addEventListener("click", () => openForm());
 
@@ -1204,9 +1280,13 @@ $("albumForm").addEventListener("submit", async (e) => {
     format: $("fFormat").value.replace(/\s+/g, " ").trim() || null,
     copies: formStatus === "owned" ? formCopies : 1
   };
-  if (!payload.artist || !payload.title) { $("formError").textContent = COPY.form.missing; return; }
-  if ($("fYear").value.trim() && !payload.year) { $("formError").textContent = COPY.form.badYear; return; }
-  if (payload.image_url && !safeUrl(payload.image_url)) { $("formError").textContent = COPY.form.badUrl; return; }
+  clearFieldErrors();
+  const bad = [];
+  if (!payload.artist) bad.push(["fArtist", COPY.form.needArtist]);
+  if (!payload.title) bad.push(["fTitle", COPY.form.needTitle]);
+  if (payload.image_url && !safeUrl(payload.image_url)) bad.push(["fImage", COPY.form.badUrl]);
+  if ($("fYear").value.trim() && !payload.year) { $("moreBlock").open = true; bad.push(["fYear", COPY.form.badYear]); }
+  if (bad.length) { bad.forEach(([id, msg]) => fieldError(id, msg)); const f = $(bad[0][0]); f.focus({ preventScroll: true }); f.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
   if (editing) {
     delete payload.barcode; delete payload.source_url; delete payload.master_url;
     const oldCover = editing.image_url, coverChanged = payload.image_url !== oldCover;
@@ -1222,6 +1302,36 @@ $("albumForm").addEventListener("submit", async (e) => {
   }
   await addAlbum(payload, { fromForm: true });
 });
+
+/* ---------- Błędy przy polach i niezapisane zmiany ---------- */
+function fieldError(id, msg) {
+  const input = $(id);
+  input.classList.add("invalid"); input.setAttribute("aria-invalid", "true");
+  let m = $(id + "Err");
+  if (!m) { m = el("span", { class: "field-error", id: id + "Err", role: "alert" }); input.insertAdjacentElement("afterend", m); }
+  m.textContent = msg; input.setAttribute("aria-describedby", [input.getAttribute("aria-describedby"), m.id].filter(Boolean).join(" "));
+}
+function clearFieldErrors() {
+  document.querySelectorAll("#albumForm .invalid").forEach(i => { i.classList.remove("invalid"); i.removeAttribute("aria-invalid"); });
+  document.querySelectorAll("#albumForm .field-error").forEach(m => m.remove());
+}
+["fArtist", "fTitle", "fImage", "fYear"].forEach(id => $(id).addEventListener("input", () => {
+  $(id).classList.remove("invalid"); $(id).removeAttribute("aria-invalid"); const m = $(id + "Err"); if (m) m.remove();
+}));
+let formSnapshot = "";
+const formState = () => JSON.stringify([...document.querySelectorAll("#albumForm input")].map(i => i.value).concat(formStatus, formCopies));
+const formDirty = () => $("albumDialog").open && formState() !== formSnapshot;
+let discardAsking = false;
+async function requestCloseForm() {
+  if (!formDirty()) { $("albumDialog").close(); return true; }
+  if (discardAsking) return false;
+  discardAsking = true;
+  const ok = await confirmDialog(COPY.form.discardTitle, COPY.form.discardText, COPY.form.discardYes, COPY.form.discardNo);
+  discardAsking = false;
+  if (ok) $("albumDialog").close();
+  return ok;
+}
+$("albumDialog").addEventListener("cancel", (e) => { e.preventDefault(); requestCloseForm(); });   // Escape
 
 // Wspólne dodawanie (formularz i skaner). Zwraca true, gdy zapisano.
 async function addAlbum(payload, { fromForm = false } = {}) {
@@ -1292,7 +1402,7 @@ let stream = null, scanLoop = null, zxingReader = null, scanning = false;
 function scanMsg([a, b]) { $("scanMsg").textContent = a; $("scanMsg2").textContent = b; }
 async function openScanner() {
   if ($("albumDialog").open) $("albumDialog").close();
-  $("scanner").hidden = false; $("codeInput").value = "";
+  $("scanner").hidden = false; $("codeInput").value = ""; modalOpened();
   document.body.style.overflow = "hidden";
   scanMsg(COPY.scan.starting);
   try { await startCamera(); scanMsg(COPY.scan.aim); }
@@ -1303,7 +1413,8 @@ async function openScanner() {
   }
 }
 function closeScanner() {
-  stopCamera(); $("scanner").hidden = true; $("viewfinder").hidden = false;
+  const was = !$("scanner").hidden;
+  stopCamera(); $("scanner").hidden = true; $("viewfinder").hidden = false; if (was) modalClosed();
   if ($("found").hidden) document.body.style.overflow = "";
 }
 async function startCamera() {
@@ -1385,7 +1496,7 @@ async function lookup(code) {
    Po kodzie, który płyta już ma, albo po nowym skanie. Wypełniamy tylko PUSTE pola —
    nic, co zostało wpisane ręcznie, nie jest nadpisywane. */
 let enrichTarget = null;
-const isDesktop = () => matchMedia("(hover:hover) and (pointer:fine)").matches;
+function isDesktop() { return matchMedia("(hover:hover) and (pointer:fine)").matches; }   // mysz, bez dotyku
 function enrichByScan(a) { enrichTarget = a; $("detailDialog").close(); openScanner(); }
 async function enrichByCode(a) {
   let rec = null, failed = false;
@@ -1600,7 +1711,7 @@ function openDetails(a) {
     el("button", { class: "btn", type: "button", text: D.edit, onclick: () => { $("detailDialog").close(); openForm(a); } }),
     owned ? null : el("button", { class: "btn-ghost", type: "button", text: COPY.have, onclick: () => { $("detailDialog").close(); moveToOwned(a); } }));
   body.replaceChildren(head, record, facts, since, actions);
-  if (!$("detailDialog").open) $("detailDialog").showModal();
+  if (!$("detailDialog").open) { $("detailDialog").showModal(); modalOpened(); }
 }
 $("detailDialog").addEventListener("click", (e) => { if (e.target === $("detailDialog")) $("detailDialog").close(); });
 
@@ -1636,7 +1747,7 @@ async function findCover(rel) {
 
 function showFound(rec, code, failed, own) {
   const body = $("foundBody"); body.replaceChildren();
-  $("found").hidden = false; document.body.style.overflow = "hidden";
+  $("found").hidden = false; document.body.style.overflow = "hidden"; modalOpened();
   if (!rec) {
     const [t, x, cta] = failed ? COPY.scan.lookupError : COPY.scan.notFound;
     body.style.justifyContent = "center";
@@ -1678,7 +1789,7 @@ function showFound(rec, code, failed, own) {
     el("button", { class: "link", type: "button", text: COPY.scan.notThis, onclick: () => { closeFound(); openForm(null, rec); } }));
   body.append(actions);
 }
-function closeFound() { $("found").hidden = true; document.body.style.overflow = ""; }
+function closeFound() { const was = !$("found").hidden; $("found").hidden = true; document.body.style.overflow = ""; if (was) modalClosed(); }
 document.querySelector("[data-found-close]").addEventListener("click", closeFound);
 $("rescanBtn").addEventListener("click", () => { closeFound(); openScanner(); });
 
@@ -1686,6 +1797,37 @@ document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("scanner").hidden) closeScanner();
   else if (!$("found").hidden) closeFound();
+});
+
+/* ---------- Przycisk „wstecz” (Android, gest cofania) zamyka okno zamiast wychodzić z aplikacji ----------
+   Otwarte okno = jeden wpis w historii. Kilka okien po kolei dzieli ten sam wpis. */
+let ignorePop = false;
+const anyModalOpen = () => $("albumDialog").open || $("detailDialog").open || !$("scanner").hidden || !$("found").hidden;
+function modalOpened() {
+  if (backPending) return;                     // cofanie w toku — po nim popstate doda wpis z powrotem
+  if (history.state && history.state.modal) return;
+  history.pushState({ modal: true }, "");
+}
+let backPending = false;
+function modalClosed() {
+  setTimeout(() => {   // po chwili: może zaraz otwiera się kolejne okno (np. karta → edycja)
+    // backPending: kilka okien zamkniętych naraz cofa historię tylko raz
+    if (!backPending && !anyModalOpen() && history.state && history.state.modal) { backPending = true; ignorePop = true; history.back(); }
+  }, 0);
+}
+["albumDialog", "detailDialog"].forEach(id => $(id).addEventListener("close", modalClosed));
+window.addEventListener("popstate", async () => {
+  backPending = false;
+  if (ignorePop) { ignorePop = false; if (anyModalOpen()) history.pushState({ modal: true }, ""); return; }
+  if (!anyModalOpen()) return;
+  if ($("confirmDialog").open) { history.pushState({ modal: true }, ""); $("confirmNo").click(); return; }
+  if (!$("found").hidden) { closeFound(); return; }
+  if (!$("scanner").hidden) { leaveScanner(); return; }
+  if ($("albumDialog").open) {
+    history.pushState({ modal: true }, "");          // na razie zostajemy; zamknie się, jeśli nic nie ginie albo po potwierdzeniu
+    requestCloseForm(); return;
+  }
+  if ($("detailDialog").open) $("detailDialog").close();
 });
 
 /* =====================================================================
