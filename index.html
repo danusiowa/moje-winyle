@@ -546,7 +546,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 
 <!-- ================= SKANER ================= -->
 <section id="scanner" class="scanner" hidden aria-labelledby="scanTitle">
-  <div class="scanner-top"><b id="scanTitle">Skanowanie</b><button class="close" data-scan-close aria-label="Zamknij skaner"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="scanner-top"><b id="scanTitle">Pokaż kod, pokażę płytę</b><button class="close" data-scan-close aria-label="Zamknij skaner"><svg class="icon"><use href="#i-x"/></svg></button></div>
   <div class="scanner-body">
     <div class="viewfinder" id="viewfinder">
       <video id="video" playsinline muted></video>
@@ -608,19 +608,20 @@ const CONFIG = {
 const COPY = {
   auth: {
     lead: "Katalog twojej kolekcji winyli.",
-    sub: "Spis inwentarza dla osób, które „nie mają problemu”.",
+    subLines: ["Spis inwentarza dla osób, które „nie mają problemu”.", "Ewidencja nałogu. Elegancka.", "Tu liczymy płyty, nie wydatki."],
+    get sub() { return sessionPick("auth.sub", this.subLines); },
     resetLead: "Nowe hasło",
     resetSub: "Podaj e-mail. Pamięć zawodzi, link nie.",
     setLead: "Ustaw hasło",
     setSub: "Coś, czego nikt nie zgadnie. Nawet ty za miesiąc.",
     signupLead: "Załóż konto",
     signupSub: "Pierwszy krok jest darmowy. Kolejne płyty już nie.",
-    inviteOnly: ["Konta tylko na zaproszenie.", "Selekcja ostrzejsza niż w sklepie z winylami."],
+    get inviteOnly() { return ["Konta tylko na zaproszenie.", sessionPick("auth.invite", ["Selekcja ostrzejsza niż w sklepie z winylami.", "Lista gości krótsza niż limitowany nakład."])]; },
     signupPrompt: "Nie masz konta?",
-    badLogin: "Nieprawidłowy e-mail lub hasło. Pamięć do tytułów jest, do haseł gorzej.",
+    badLogin: "Nieprawidłowy e-mail lub hasło. Bramkarz kręci głową.",
     emptyFields: "Wpisz e-mail i hasło. Na słowo honoru nie wpuszczamy.",
     resetSent: ["Sprawdź skrzynkę", "Wysłane. Tym razem zapisz hasło."],
-    passMismatch: "Hasła się różnią. Jedno z nich chyba ma inną wersję.",
+    passMismatch: "Hasła się różnią. Jak oryginalne tłoczenie i reedycja.",
     passShort: "Hasło musi mieć co najmniej 8 znaków. Krótkie hasła są jak single: szybko się kończą.",
     passSaved: ["Hasło ustawione", "Teraz tylko go nie zapomnij."],
     signupDone: ["Konto założone", "Sprawdź skrzynkę i potwierdź adres. Potem już nie ma odwrotu."],
@@ -798,7 +799,8 @@ const COPY = {
   },
   enrich: {
     notFound: ["Nie znamy tej płyty.", "Bazy płyt milczą. Kod zapisany, resztę trzeba wpisać ręcznie."],
-    nothing: ["Nic do uzupełnienia", "Źródło nie wie więcej niż ty. Imponujące."],
+    nothingLines: ["Źródło nie wie więcej niż ty. Imponujące.", "Kartoteka była kompletna. Szacun."],
+    get nothing() { return ["Nic do uzupełnienia", pickFresh(this.nothingLines)]; },
     mismatchTitle: "To chyba inna płyta",
     mismatchText: (r) => `Kod pasuje do: ${r.artist} – ${r.title}. Coś się nie zgadza, i nie jest to twój gust. Uzupełnić mimo to?`,
     mismatchYes: "Uzupełnij", mismatchNo: "Nie, to pomyłka",
@@ -820,11 +822,12 @@ const COPY = {
   },
   scan: {
     aim: ["Nakieruj aparat na kod kreskowy", "Ten z tyłu okładki. Z paskami, nie z ładnym zdjęciem."],
-    starting: ["Włączamy aparat…", "Chwila. Obiektyw też musi się obudzić."],
+    get starting() { return ["Włączamy aparat…", pickFresh(this.startingLines)]; },
+    startingLines: ["Chwila. Obiektyw też musi się obudzić.", "Rozgrzewamy soczewkę jak lampę we wzmacniaczu."],
     noCamera: ["Brak dostępu do aparatu", "Przeglądarka pilnuje aparatu lepiej niż ty budżetu. Zezwól albo wpisz cyfry."],
     unsupported: ["Ta przeglądarka nie umie skanować", "Wpisz cyfry spod kodu. Też działa, tylko mniej efektownie."],
     badCode: "Kod kreskowy ma 8, 12 albo 13 cyfr. Cyfry spod pasków, nie z paragonu.",
-    foundPill: "Znaleziono",
+    foundPill: "Mamy ją",
     foundTitle: "To ta płyta?",
     foundSubLines: [
       "Dobry gust albo słaba wola. Pewnie jedno i drugie.",
