@@ -389,7 +389,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
     </form>
 
     <form id="passwordForm" class="auth-form" novalidate hidden>
-      <div class="field"><label for="newPass">Nowe hasło</label><input class="input" id="newPass" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 znaków" required></div>
+      <div class="field"><label for="newPass">Nowe hasło</label><input class="input" id="newPass" type="password" autocomplete="new-password" minlength="8" placeholder="8+ znaków. Data urodzin odpada" required></div>
       <div class="field"><label for="newPass2">Powtórz hasło</label><input class="input" id="newPass2" type="password" autocomplete="new-password" minlength="8" required></div>
       <div class="form-error" id="passError" role="alert"></div>
       <button class="btn" type="submit">Ustaw hasło</button>
@@ -397,7 +397,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 
     <form id="signupForm" class="auth-form" novalidate hidden>
       <div class="field"><label for="signupEmail">E-mail</label><input class="input" id="signupEmail" type="email" autocomplete="email" required></div>
-      <div class="field"><label for="signupPass">Hasło</label><input class="input" id="signupPass" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 znaków" required></div>
+      <div class="field"><label for="signupPass">Hasło</label><input class="input" id="signupPass" type="password" autocomplete="new-password" minlength="8" placeholder="8+ znaków. Data urodzin odpada" required></div>
       <div class="form-error" id="signupError" role="alert"></div>
       <button class="btn" type="submit">Załóż konto</button>
       <button type="button" class="link" data-back-to-login style="align-self:center">Mam konto. I problem też</button>
@@ -621,7 +621,7 @@ const COPY = {
     get loggedOut() { return ["Wylogowano", pickFresh(this.loggedOutLines)]; }
   },
   views: {
-    owned:  { title: "Moja kolekcja", search: "Szukaj wykonawcy lub tytułu", searchShort: "Szukaj płyty" },
+    owned:  { title: "Moja kolekcja", search: "Czego szukasz? Pewnie to masz", searchShort: "Pewnie to masz" },
     wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”", searchShort: "Szukaj na liście" }
   },
   // [liczba, komentarz]
