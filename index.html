@@ -99,6 +99,10 @@ img{max-width:100%}
 .tab[data-view="wanted"][aria-current="page"]{border-color:var(--pink)}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:12px}
 .top-actions .btn{min-height:52px;padding:0 26px;font-size:17px}
+.invite-result{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--r-field);background:var(--teal-soft)}
+.invite-result .input{font-size:14px;background:var(--surface)}
+.invite-actions{display:flex;gap:10px;flex-wrap:wrap}
+.invite-actions > *{flex:1 1 140px}
 .logout{background:none;border:0;min-height:52px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:500;font-size:17px}
 .main{max-width:1440px;margin:0 auto;padding:48px 48px 72px}
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-bottom:40px}
@@ -407,6 +411,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-invite" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 19.5c.8-3.4 3.3-5.5 6.5-5.5 1.6 0 3 .5 4.1 1.4M18 13v6M15 16h6"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M8 9v6M11 9v6M13 9v6M16 9v6"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
@@ -487,6 +492,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       </nav>
       <div class="top-actions">
         <button class="btn" id="addBtnTop"><svg class="icon"><use href="#i-plus"/></svg>Nowy nabytek</button>
+        <button class="logout" id="inviteBtn" type="button" aria-label="Zaproś do VinyLog"><svg class="icon"><use href="#i-invite"/></svg><span>Zaproś</span></button>
         <button class="logout" id="logoutBtn" aria-label="Wyloguj"><svg class="icon"><use href="#i-out"/></svg><span>Wyloguj</span></button>
       </div>
     </div>
@@ -595,6 +601,27 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 </dialog>
 
 <!-- ================= POTWIERDZENIE USUNIĘCIA ================= -->
+<dialog id="inviteDialog" aria-labelledby="inviteTitle">
+  <form class="sheet" id="inviteForm" novalidate>
+    <div class="sheet-head">
+      <div><h2 class="display" id="inviteTitle"></h2><p class="sub" id="inviteSub"></p></div>
+      <button type="button" class="close" data-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="field"><label for="inviteEmail">E-mail osoby</label>
+      <input class="input" id="inviteEmail" type="email" autocomplete="off" inputmode="email" placeholder="np. znajomy@poczta.pl" required></div>
+    <div class="form-error" id="inviteError" role="alert"></div>
+    <div class="invite-result" id="inviteResult" hidden>
+      <span class="lbl" id="inviteReadyTitle"></span>
+      <input class="input" id="inviteLink" readonly aria-label="Link z zaproszeniem">
+      <span class="hint" id="inviteReadyHint"></span>
+      <div class="invite-actions">
+        <button type="button" class="btn" id="inviteCopy"></button>
+        <button type="button" class="btn-ghost" id="inviteShare" hidden></button>
+      </div>
+    </div>
+    <div class="sheet-actions" id="inviteMake"><button class="btn" type="submit" id="inviteSubmit"></button></div>
+  </form>
+</dialog>
 <dialog id="detailDialog" aria-labelledby="detailTitle">
   <div class="sheet" id="detailBody"></div>
 </dialog>
@@ -858,6 +885,20 @@ const COPY = {
     // druga linia pod datą dodania, losowo
     sinceOwned: ["Najstabilniejszy związek w tym domu.", "Od tego dnia półka nie jest taka sama.", "I ani razu nie zawiodła.", "Wierność godna pozazdroszczenia."],
     sinceWanted: ["Czeka cierpliwie. W przeciwieństwie do niektórych.", "Wypłata wie, co ma robić.", "Marzenia też mają datę ważności. Ta jeszcze nie."]
+  },
+  invite: {
+    title: "Zaproś do VinyLog",
+    sub: "Wpisz e-mail, dostaniesz link do wysłania zagrożonym. Nałóg lubi towarzystwo.",
+    make: "Utwórz link",
+    readyTitle: "Link gotowy",
+    readyHint: "Wyślij go tej osobie. Po kliknięciu ustawi hasło i dostanie własną, pustą kolekcję. Link działa raz i przez ograniczony czas.",
+    readyHintExisting: "To konto już istnieje. Ten link pozwala ustawić nowe hasło. Działa raz i przez ograniczony czas.",
+    copy: "Kopiuj link", share: "Wyślij…",
+    copied: ["Skopiowano link", "Teraz tylko wkleić. Reszta to już ich problem."],
+    copyFailed: "Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.",
+    badEmail: "Sprawdź adres. Listonosz też by nie trafił.",
+    exists: "Ta osoba już tu jest. Widać nałóg był szybszy.",
+    failed: "Nie udało się utworzyć linku. Spróbuj za chwilę."
   },
   enrich: {
     notFound: ["Nie znamy tej płyty.", "Bazy płyt milczą. Kod zapisany, resztę trzeba wpisać ręcznie."],
@@ -1864,6 +1905,47 @@ function normalizeRelease(raw) {
     master_url: raw.master_url || null
   };
 }
+/* ---------- Zaproszenie przez link (dla każdego zalogowanego) ---------- */
+function openInvite() {
+  const I = COPY.invite;
+  $("inviteTitle").textContent = I.title; $("inviteSub").textContent = I.sub;
+  $("inviteSubmit").textContent = I.make; $("inviteCopy").textContent = I.copy; $("inviteShare").textContent = I.share;
+  $("inviteForm").reset(); $("inviteError").textContent = ""; $("inviteResult").hidden = true; $("inviteMake").hidden = false;
+  $("inviteShare").hidden = !navigator.share;
+  if (!$("inviteDialog").open) { $("inviteDialog").showModal(); modalOpened(); }
+  if (isDesktop()) setTimeout(() => $("inviteEmail").focus(), 60);
+}
+$("inviteBtn").addEventListener("click", openInvite);
+$("inviteDialog").addEventListener("close", modalClosed);
+$("inviteDialog").addEventListener("click", (e) => { if (e.target === $("inviteDialog")) $("inviteDialog").close(); });
+$("inviteEmail").addEventListener("input", () => { $("inviteError").textContent = ""; $("inviteResult").hidden = true; $("inviteMake").hidden = false; });
+$("inviteForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const I = COPY.invite, email = $("inviteEmail").value.trim();
+  $("inviteError").textContent = "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("inviteError").textContent = I.badEmail; $("inviteEmail").focus(); return; }
+  let data = null, status = 0;
+  try {
+    const r = await withLoader(null, () => db.functions.invoke("invite-link", { body: { email } }));
+    data = r.data; status = r.error?.context?.status || 0;
+    if (r.error && status !== 409) throw r.error;
+  } catch (err) { console.warn(err); $("inviteError").textContent = I.failed; return; }
+  if (status === 409 || data?.error === "exists") { $("inviteError").textContent = I.exists; return; }
+  if (!data?.link) { $("inviteError").textContent = I.failed; return; }
+  $("inviteLink").value = data.link;
+  $("inviteReadyTitle").textContent = I.readyTitle;
+  $("inviteReadyHint").textContent = data.existing ? I.readyHintExisting : I.readyHint;
+  $("inviteResult").hidden = false; $("inviteMake").hidden = true;
+});
+$("inviteCopy").addEventListener("click", async () => {
+  const link = $("inviteLink").value;
+  try { await navigator.clipboard.writeText(link); toast("success", COPY.invite.copied); }
+  catch { $("inviteLink").select(); $("inviteError").textContent = COPY.invite.copyFailed; }
+});
+$("inviteShare").addEventListener("click", async () => {
+  try { await navigator.share({ title: "VinyLog", text: "Zapraszam cię do VinyLog, katalogu winyli.", url: $("inviteLink").value }); } catch { /* anulowano */ }
+});
+
 /* ---------- Karta płyty: podgląd, z którego przechodzi się do edycji ---------- */
 function openDetails(a) {
   const D = COPY.details, L = COPY.scan.labels, owned = (a.status || "owned") === "owned";
@@ -2011,7 +2093,7 @@ document.addEventListener("keydown", (e) => {
 /* ---------- Przycisk „wstecz” (Android, gest cofania) zamyka okno zamiast wychodzić z aplikacji ----------
    Otwarte okno = jeden wpis w historii. Kilka okien po kolei dzieli ten sam wpis. */
 let ignorePop = false;
-const anyModalOpen = () => $("albumDialog").open || $("detailDialog").open || !$("scanner").hidden || !$("found").hidden;
+const anyModalOpen = () => $("albumDialog").open || $("detailDialog").open || $("inviteDialog").open || !$("scanner").hidden || !$("found").hidden;
 function modalOpened() {
   if (backPending) return;                     // cofanie w toku — po nim popstate doda wpis z powrotem
   if (history.state && history.state.modal) return;
@@ -2037,6 +2119,7 @@ window.addEventListener("popstate", async () => {
     requestCloseForm(); return;
   }
   if ($("detailDialog").open) $("detailDialog").close();
+  if ($("inviteDialog").open) $("inviteDialog").close();
 });
 
 /* =====================================================================
