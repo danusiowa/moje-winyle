@@ -701,12 +701,25 @@ const COPY = {
   },
   details: {
     edit: "Edytuj płytę",
-    noFacts: "Brak szczegółów wydania. Edycja to naprawi, skan jeszcze szybciej.",
+    noFactsScan: "Brak szczegółów wydania. Zeskanuj kod z okładki albo uzupełnij je w edycji.",
+    noFactsCode: "Brak szczegółów wydania. Kod kreskowy jest, więc wystarczy jedno kliknięcie.",
+    noFactsDesktop: "Brak szczegółów wydania. Uzupełnisz je w edycji albo skanem na telefonie.",
+    fillByCode: "Uzupełnij szczegóły",
+    fillByScan: "Zeskanuj kod, żeby uzupełnić",
     copies: "Egzemplarze",
     added: "Dodano",
     // druga linia pod datą dodania, losowo
     sinceOwned: ["Najstabilniejszy związek w tym domu.", "Od tego dnia półka nie jest taka sama.", "I ani razu nie zawiodła.", "Wierność godna pozazdroszczenia."],
     sinceWanted: ["Czeka cierpliwie. W przeciwieństwie do niektórych.", "Wypłata wie, co ma robić.", "Marzenia też mają datę ważności. Ta jeszcze nie."]
+  },
+  enrich: {
+    notFound: ["Nie znamy tej płyty.", "Bazy płyt milczą. Kod zapisany, resztę trzeba wpisać ręcznie."],
+    nothing: ["Nic do uzupełnienia", "Źródło nie wie więcej niż ty. Imponujące."],
+    mismatchTitle: "To chyba inna płyta",
+    mismatchText: (r) => `Kod pasuje do: ${r.artist} – ${r.title}. Uzupełnić mimo to?`,
+    mismatchYes: "Uzupełnij", mismatchNo: "Nie, to pomyłka",
+    done: ["Teraz wiemy o niej więcej niż o niejednym znajomym.", "Kartoteka kompletna. Archiwista byłby dumny.",
+           "Rok, wytwórnia, format. Wszystko, czego nikt nie pytał, a każdy chce wiedzieć.", "Uzupełnione. Pedanteria level: winyl."]
   },
   confirmDelete: {
     title: "Usunąć tę płytę?",
@@ -814,6 +827,9 @@ function toast(kind, pair) {
   const t = el("div", { class: "toast", role: kind === "error" ? "alert" : "status" },
     el("span", { class: "badge " + bc }, svgUse(ic)),
     el("div", {}, el("b", { text: title }), el("span", { text: text })));
+  // Gdy otwarte jest okno (karta płyty, formularz), powiadomienie idzie do niego — inaczej chowa się pod przyciemnieniem.
+  const host = [...document.querySelectorAll("dialog[open]")].pop() || document.body;
+  if ($("toasts").parentElement !== host) host.append($("toasts"));
   $("toasts").append(t);
   setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 250); }, kind === "error" ? 6500 : 4500);
 }
@@ -1380,8 +1396,12 @@ $("codeForm").addEventListener("submit", (e) => {
   stopCamera(); lookup(code);
 });
 $("openScanBtn").addEventListener("click", openScanner);
-document.querySelector("[data-scan-close]").addEventListener("click", () => { closeScanner(); openForm(); });
-$("scanManualBtn").addEventListener("click", () => { closeScanner(); openForm(); });
+function leaveScanner() {
+  closeScanner();
+  if (enrichTarget) { const t = enrichTarget; enrichTarget = null; openDetails(t); } else openForm();
+}
+document.querySelector("[data-scan-close]").addEventListener("click", leaveScanner);
+$("scanManualBtn").addEventListener("click", leaveScanner);
 
 async function lookup(code) {
   // Duplikat po kodzie — sprawdzamy od razu, bez pytania internetu.
@@ -1390,7 +1410,47 @@ async function lookup(code) {
   try { result = await withLoader(COPY.loader.lookup, () => searchBarcode(code)); }
   catch (err) { console.warn(err); failed = true; }
   closeScanner();
+  if (enrichTarget) { const t = enrichTarget; enrichTarget = null; await enrichFrom(t, result, code, failed); return; }
   showFound(result, code, failed, own);
+}
+
+/* ---------- Uzupełnianie szczegółów istniejącej płyty (z karty płyty) ----------
+   Po kodzie, który płyta już ma, albo po nowym skanie. Wypełniamy tylko PUSTE pola —
+   nic, co zostało wpisane ręcznie, nie jest nadpisywane. */
+let enrichTarget = null;
+const isDesktop = () => matchMedia("(hover:hover) and (pointer:fine)").matches;
+function enrichByScan(a) { enrichTarget = a; $("detailDialog").close(); openScanner(); }
+async function enrichByCode(a) {
+  let rec = null, failed = false;
+  try { rec = await withLoader(COPY.loader.lookup, () => searchBarcode(a.barcode)); }
+  catch (err) { console.warn(err); failed = true; }
+  await enrichFrom(a, rec, a.barcode, failed);
+}
+async function enrichFrom(a, rec, code, failed) {
+  const E = COPY.enrich;
+  if (failed) { toast("error", COPY.scan.lookupError.slice(0, 2)); openDetails(a); return; }
+  if (!rec) {
+    if (!a.barcode) { const { error } = await db.from("albums").update({ barcode: code }).eq("id", a.id); if (!error) a.barcode = code; }
+    toast("dup", E.notFound); openDetails(a); return;
+  }
+  // Zeskanowano coś innego? Pytamy, zanim cokolwiek zmienimy.
+  if (norm(rec.artist) + "|" + norm(rec.title) !== norm(a.artist) + "|" + norm(a.title)) {
+    const ok = await confirmDialog(E.mismatchTitle, E.mismatchText(rec), E.mismatchYes, E.mismatchNo);
+    if (!ok) { openDetails(a); return; }
+  }
+  const keys = ["year", "country", "label", "catalog_number", "format", "master_url", "source_url", "barcode"];
+  const patch = {};
+  for (const k of keys) if ((a[k] == null || a[k] === "") && rec[k] != null && rec[k] !== "") patch[k] = rec[k];
+  if (!a.barcode) patch.barcode = code;
+  const needCover = !a.image_url && rec.image_url;
+  if (!Object.keys(patch).length && !needCover) { toast("dup", E.nothing); openDetails(a); return; }
+  const { error } = await withLoader(COPY.loader.save, async () => {
+    if (needCover) patch.image_url = await ownCover(rec.image_url);
+    return db.from("albums").update(patch).eq("id", a.id);
+  });
+  if (error) { if (patch.image_url) removeOwnCover(patch.image_url); toast("error", COPY.toast.saveError); openDetails(a); return; }
+  Object.assign(a, patch); render(); openDetails(a);
+  toast("success", ["Uzupełniono szczegóły", pickFresh(E.done)]);
 }
 // Kolejność: Discogs (przez funkcję w Supabase, token zostaje na serwerze) → MusicBrainz.
 // Błąd jednego źródła nie przerywa szukania; „błąd” pokazujemy tylko, gdy padły oba.
@@ -1551,8 +1611,16 @@ function openDetails(a) {
   const rows = releaseFacts(a);
   const extra = [];
   if (owned) extra.push(el("div", { class: "wide" }, el("small", { text: D.copies }), qtyNode(a)));
+  // Czego brakuje i jak to uzupełnić: po kodzie (wszędzie) albo skanem (tylko telefon).
+  const missing = !a.year || !a.label || !a.format || !a.catalog_number || !a.country;
+  const fill = !missing ? null
+    : a.barcode ? el("button", { class: "btn-mini", type: "button", text: D.fillByCode, onclick: () => { $("detailDialog").close(); enrichByCode(a); } })
+    : !isDesktop() ? el("button", { class: "btn-mini", type: "button", text: D.fillByScan, onclick: () => enrichByScan(a) })
+    : null;
+  const emptyText = a.barcode ? D.noFactsCode : isDesktop() ? D.noFactsDesktop : D.noFactsScan;
   const facts = el("div", { class: "facts" },
-    ...(rows.length ? rows : [el("span", { class: "empty-facts", text: D.noFacts })]),
+    ...(rows.length ? rows : [el("span", { class: "empty-facts", text: emptyText })]),
+    fill ? el("div", {}, fill) : null,
     extra.length ? el("div", { class: "facts-grid" }, ...extra) : null,
     (a.barcode || a.source_url || a.master_url) ? el("div", { class: "src" },
       el("span", { text: a.barcode ? `${L.code} ${a.barcode}` : "" }),
