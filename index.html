@@ -184,6 +184,12 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .notice b{display:block}
 .notice span{font-size:14px;color:var(--muted)}
 .sheet-actions{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+/* Karta płyty (podgląd przed edycją) */
+.detail-head h2{font-size:30px;line-height:1.1}
+.detail-head .sub{margin:4px 0 0;font-size:17px}
+.facts > .facts-grid:first-child{border-top:0;padding-top:0}
+.since{font-size:14px;color:var(--muted);text-align:center;margin:0}
+.facts .empty-facts{font-size:14px;color:var(--muted)}
 .sheet-actions .link{align-self:center}
 .confirm{width:min(360px,calc(100vw - 32px))}
 .confirm .sheet{gap:8px}
@@ -485,6 +491,9 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 </dialog>
 
 <!-- ================= POTWIERDZENIE USUNIĘCIA ================= -->
+<dialog id="detailDialog" aria-labelledby="detailTitle">
+  <div class="sheet" id="detailBody"></div>
+</dialog>
 <dialog id="confirmDialog" class="confirm" aria-labelledby="confirmTitle">
   <div class="sheet">
     <h2 class="display" id="confirmTitle"></h2>
@@ -684,6 +693,15 @@ const COPY = {
     saveError: ["Nie udało się zapisać", "Serwer powiedział „nie”. Rzadka asertywność w tym projekcie."],
     deleteError: ["Nie udało się usunąć", "Płyta stawia opór. Spróbuj ponownie."],
     genericError: ["Coś poszło nie tak", "Sprawdź połączenie i spróbuj ponownie."]
+  },
+  details: {
+    edit: "Edytuj płytę",
+    noFacts: "Brak szczegółów wydania. Edycja to naprawi, skan jeszcze szybciej.",
+    copies: "Egzemplarze",
+    added: "Dodano",
+    // druga linia pod datą dodania, losowo
+    sinceOwned: ["Najstabilniejszy związek w tym domu.", "Od tego dnia półka nie jest taka sama.", "I ani razu nie zawiodła.", "Wierność godna pozazdroszczenia."],
+    sinceWanted: ["Czeka cierpliwie. W przeciwieństwie do niektórych.", "Wypłata wie, co ma robić.", "Marzenia też mają datę ważności. Ta jeszcze nie."]
   },
   confirmDelete: {
     title: "Usunąć tę płytę?",
@@ -1040,7 +1058,7 @@ function render() {
   grid.replaceChildren(...shown.map(a => {
     const cover = coverNode(a);
     const copiesLabel = (a.copies || 1) > 1 ? `, ${a.copies} ${plural(a.copies, "egzemplarz", "egzemplarze", "egzemplarzy")}` : "";
-    const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}${copiesLabel}. Edytuj`, onclick: () => openForm(a) },
+    const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}${copiesLabel}. Szczegóły`, onclick: () => openDetails(a) },
       cover, el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
     const card = el("article", { class: "card" }, hit);
     if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
@@ -1516,6 +1534,35 @@ function normalizeRelease(raw) {
     master_url: raw.master_url || null
   };
 }
+/* ---------- Karta płyty: podgląd, z którego przechodzi się do edycji ---------- */
+function openDetails(a) {
+  const D = COPY.details, L = COPY.scan.labels, owned = (a.status || "owned") === "owned";
+  const body = $("detailBody");
+  const head = el("div", { class: "sheet-head detail-head" },
+    el("div", {}, el("h2", { class: "display", id: "detailTitle", text: a.title }), el("p", { class: "sub", text: a.artist })),
+    el("button", { type: "button", class: "close", "aria-label": "Zamknij", onclick: () => $("detailDialog").close() }, svgUse("i-x")));
+  const record = el("div", { class: "record" }, el("div", { class: "disc" }), coverNode(a));
+  const rows = releaseFacts(a);
+  const extra = [];
+  if (owned) extra.push(el("div", {}, el("small", { text: D.copies }), el("span", { text: String(a.copies || 1) })));
+  const facts = el("div", { class: "facts" },
+    ...(rows.length ? rows : [el("span", { class: "empty-facts", text: D.noFacts })]),
+    extra.length ? el("div", { class: "facts-grid" }, ...extra) : null,
+    (a.barcode || a.source_url || a.master_url) ? el("div", { class: "src" },
+      el("span", { text: a.barcode ? `${L.code} ${a.barcode}` : "" }),
+      el("span", { class: "src-links" },
+        a.master_url ? el("a", { href: a.master_url, target: "_blank", rel: "noopener", text: L.allEditions }) : null,
+        a.source_url ? el("a", { href: a.source_url, target: "_blank", rel: "noopener", text: sourceLabel(a.source_url) }) : null)) : null);
+  const when = a.created_at ? new Date(a.created_at).toLocaleDateString("pl-PL", { day: "numeric", month: "long", year: "numeric" }) : null;
+  const since = when ? el("p", { class: "since", text: `${D.added} ${when}. ${pickFresh(owned ? D.sinceOwned : D.sinceWanted)}` }) : null;
+  const actions = el("div", { class: "sheet-actions" },
+    el("button", { class: "btn", type: "button", text: D.edit, onclick: () => { $("detailDialog").close(); openForm(a); } }),
+    owned ? null : el("button", { class: "btn-ghost", type: "button", text: COPY.have, onclick: () => { $("detailDialog").close(); moveToOwned(a); } }));
+  body.replaceChildren(head, record, facts, since, actions);
+  if (!$("detailDialog").open) $("detailDialog").showModal();
+}
+$("detailDialog").addEventListener("click", (e) => { if (e.target === $("detailDialog")) $("detailDialog").close(); });
+
 // Wiersze „Wydanie / Wytwórnia / Format” — tylko te, które mają dane.
 function releaseFacts(r) {
   const L = COPY.scan.labels;
