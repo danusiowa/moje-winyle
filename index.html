@@ -891,14 +891,14 @@ const COPY = {
     sub: "Wpisz e-mail, dostaniesz link do wysłania zagrożonym. Nałóg lubi towarzystwo.",
     make: "Utwórz link",
     readyTitle: "Link gotowy",
-    readyHint: "Wyślij go tej osobie. Po kliknięciu ustawi hasło i dostanie własną, pustą kolekcję. Link działa raz i przez ograniczony czas.",
+    readyHint: "Link gotowy do wysłania. Jednorazowy, jak pierwsze odsłuchanie.",
     readyHintExisting: "To konto już istnieje. Ten link pozwala ustawić nowe hasło. Działa raz i przez ograniczony czas.",
     copy: "Kopiuj link", share: "Wyślij…",
     copied: ["Skopiowano link", "Teraz tylko wkleić. Reszta to już ich problem."],
-    copyFailed: "Nie udało się skopiować. Zaznacz link i skopiuj ręcznie.",
+    copyFailed: "Schowek odmówił współpracy. Zaznacz link i skopiuj ręcznie.",
     badEmail: "Sprawdź adres. Listonosz też by nie trafił.",
     exists: "Ta osoba już tu jest. Widać nałóg był szybszy.",
-    failed: "Nie udało się utworzyć linku. Spróbuj za chwilę."
+    failed: "Nie udało się utworzyć linku. Serwer milczy jak cisza między utworami."
   },
   enrich: {
     notFound: ["Nie znamy tej płyty.", "Bazy płyt milczą. Kod zapisany, resztę trzeba wpisać ręcznie."],
@@ -1943,7 +1943,7 @@ $("inviteCopy").addEventListener("click", async () => {
   catch { $("inviteLink").select(); $("inviteError").textContent = COPY.invite.copyFailed; }
 });
 $("inviteShare").addEventListener("click", async () => {
-  try { await navigator.share({ title: "VinyLog", text: "Zapraszam cię do VinyLog, katalogu winyli.", url: $("inviteLink").value }); } catch { /* anulowano */ }
+  try { await navigator.share({ title: "VinyLog", text: "Dołącz do VinyLog i policz swoje winyle. Albo przynajmniej spróbuj.", url: $("inviteLink").value }); } catch { /* anulowano */ }
 });
 
 /* ---------- Karta płyty: podgląd, z którego przechodzi się do edycji ---------- */
