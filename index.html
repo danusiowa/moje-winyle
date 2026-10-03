@@ -257,8 +257,14 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .loader-box{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:280px;padding:0 20px}
 .loader-box p{margin:0;font-size:14px;color:var(--muted);opacity:0;transition:opacity .25s ease}
 .loader.long .loader-box p{opacity:1}
-.spin{width:56px;height:56px;animation:spin 1.6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.loader-logo{width:88px;height:88px;overflow:visible}
+.loader-logo .bar{transform-box:fill-box;transform-origin:50% 50%;animation:eq 1s ease-in-out infinite}
+.loader-logo .bar:nth-of-type(2){animation-delay:-.33s}
+.loader-logo .bar:nth-of-type(3){animation-delay:-.66s}
+/* Przewracanie oczami: rzut w lewo, łuk do góry, chwila „no błagam”, w prawo i z powrotem */
+.loader-logo .pupils{animation:eyeroll 2.6s cubic-bezier(.45,0,.35,1) infinite}
+@keyframes eq{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.5)}}
+@keyframes eyeroll{0%,100%{transform:translate(0,3px)}14%{transform:translate(-8px,1px)}26%{transform:translate(-6px,-7px)}34%,64%{transform:translate(0,-9px)}74%{transform:translate(6px,-6px)}86%{transform:translate(8px,1px)}}
 
 /* ---------- toasty ---------- */
 .toasts{position:fixed;right:24px;top:calc(92px + 16px + env(safe-area-inset-top));z-index:100;display:flex;flex-direction:column;gap:10px;width:min(380px,calc(100vw - 32px));pointer-events:none}
@@ -310,7 +316,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 }
 @media (max-width:340px){.grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){
-  .spin{animation-duration:6s}
+  .loader-logo .bar,.loader-logo .pupils{animation-duration:6s}
   .viewfinder .beam{animation:none}
   .toast{animation:none}
   .btn{transition:none}
@@ -557,7 +563,21 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 </section>
 
 <div id="loader" class="loader" hidden role="status" aria-live="polite">
-  <div class="loader-box"><svg class="spin" aria-hidden="true"><use href="#spinner"/></svg><p id="loaderText"></p></div>
+  <div class="loader-box">
+    <!-- Loader: logo, które przewraca oczami, a paski grają jak equalizer -->
+    <svg class="loader-logo" viewBox="26 56 500 500" aria-hidden="true">
+      <rect class="bar" x="300" y="110" width="44" height="380" rx="22" fill="#E07A8C"/>
+      <rect class="bar" x="370" y="160" width="44" height="280" rx="22" fill="#D9A032"/>
+      <rect class="bar" x="440" y="215" width="44" height="170" rx="22" fill="#2E9C95"/>
+      <path d="M276 80 A220 220 0 0 0 276 520 Z" fill="#1B1B1D"/>
+      <g fill="none" stroke="#3B3B3F" stroke-width="3"><path d="M276 110 A190 190 0 0 0 276 490"/><path d="M276 145 A155 155 0 0 0 276 455"/><path d="M276 180 A120 120 0 0 0 276 420"/></g>
+      <circle cx="276" cy="300" r="80" fill="#F3E7CF"/>
+      <g stroke="#1B1B1D" stroke-width="3.5" fill="#FFF"><circle cx="246" cy="284" r="16"/><circle cx="306" cy="284" r="16"/></g>
+      <g class="pupils" fill="#1B1B1D"><circle cx="246" cy="284" r="6.5"/><circle cx="306" cy="284" r="6.5"/></g>
+      <circle cx="276" cy="306" r="7" fill="#1B1B1D"/>
+    </svg>
+    <p id="loaderText"></p>
+  </div>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
