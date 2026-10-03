@@ -617,7 +617,8 @@ const COPY = {
     passShort: "Hasło musi mieć co najmniej 8 znaków. Krótkie hasła są jak single: szybko się kończą.",
     passSaved: ["Hasło ustawione", "Teraz tylko go nie zapomnij."],
     signupDone: ["Konto założone", "Sprawdź skrzynkę i potwierdź adres. Potem już nie ma odwrotu."],
-    loggedOut: ["Wylogowano", "Z nałogu wylogować się nie da."]
+    loggedOutLines: ["Z nałogu wylogować się nie da.", "Do zobaczenia przy następnej wypłacie."],
+    get loggedOut() { return ["Wylogowano", pickFresh(this.loggedOutLines)]; }
   },
   views: {
     owned:  { title: "Moja kolekcja", search: "Szukaj wykonawcy lub tytułu", searchShort: "Szukaj płyty" },
@@ -756,7 +757,13 @@ const COPY = {
       "Usunięto. Sumienie czyste, kolekcja lżejsza.",
       "Zniknęła. Jak pensja w dniu premiery."
     ].map(t => ["Usunięto płytę", t]),
-    duplicate: ["To już masz.", "Ale wiadomo — ten egzemplarz jest zupełnie inny."],
+    duplicateLines: [
+      "Ale wiadomo — ten egzemplarz jest zupełnie inny.",
+      "Déjà vu w formacie 12 cali.",
+      "Nie oceniamy. Tylko odnotowujemy.",
+      "Druga szansa dla tej samej decyzji."
+    ],
+    get duplicate() { return ["To już masz.", pickFresh(this.duplicateLines)]; },
     duplicateWanted: ["To już jest na liście.", "Powtarzanie życzenia nie przyspiesza wypłaty."],
     saveError: ["Nie udało się zapisać", "Serwer powiedział „nie”. Rzadka asertywność w tym projekcie."],
     deleteError: ["Nie udało się usunąć", "Płyta stawia opór. Spróbuj ponownie."],
@@ -805,8 +812,19 @@ const COPY = {
     badCode: "Kod kreskowy ma 8, 12 albo 13 cyfr. Cyfry spod pasków, nie z paragonu.",
     foundPill: "Znaleziono",
     foundTitle: "To ta płyta?",
-    foundSub: "Dobry gust albo słaba wola. Pewnie jedno i drugie.",
-    notFound: ["Nie znamy tej płyty.", "Rarytas albo pomyłka. Obstawiamy to drugie, ale po cichu.", "Dodaj ręcznie"],
+    foundSubLines: [
+      "Dobry gust albo słaba wola. Pewnie jedno i drugie.",
+      "Kod nie kłamie. Portfel też nie.",
+      "Wiemy, co to. Pytanie, czy pamiętasz, ile to było."
+    ],
+    get foundSub() { return pickFresh(this.foundSubLines); },
+    notFoundLines: [
+      "Rarytas albo pomyłka. Obstawiamy to drugie, ale po cichu.",
+      "Tak rzadka, że nawet internet jej nie zna.",
+      "Albo biały kruk, albo brudny kod.",
+      "Unikat. Albo literówka w paskach."
+    ],
+    get notFound() { return ["Nie znamy tej płyty.", pickFresh(this.notFoundLines), "Dodaj ręcznie"]; },
     lookupError: ["Wyszukiwarka nie odpowiada.", "Baza płyt chwilowo milczy. Spróbuj za moment albo dodaj ręcznie.", "Dodaj ręcznie"],
     addOwned: "Dodaj do kolekcji",
     addWanted: "Dodaj do „Po wypłacie”",
@@ -817,9 +835,15 @@ const COPY = {
   loader: {
     // null = losowo z listy default
     default: ["Technologia analizuje analogowy problem.",
-              "33 obroty na minutę. Szybciej się nie da."],
+              "33 obroty na minutę. Szybciej się nie da.",
+              "Przewracamy oczami i pracujemy.",
+              "Strona A się kończy, zaraz B.",
+              "Odkurzamy okładki. Chwilka.",
+              "Cierpliwość to cnota winylowców.",
+              "Liczymy rowki. Wszystkie.",
+              "Serwer też słucha w 33⅓."],
     login: null,
-    lookup: "Technologia analizuje analogowy problem.",
+    lookup: null,
     save: null,
     remove: null
   }
@@ -876,7 +900,7 @@ function hashIdx(s, mod) { let h = 0; for (const c of String(s)) h = (h * 31 + c
 let loaderCount = 0, loaderTimer;
 function showLoader(text) {
   loaderCount++;
-  $("loaderText").textContent = text || pickOne(COPY.loader.default);
+  $("loaderText").textContent = text || pickFresh(COPY.loader.default);
   $("loader").classList.remove("long"); $("loader").hidden = false;
   clearTimeout(loaderTimer);
   loaderTimer = setTimeout(() => $("loader").classList.add("long"), CONFIG.LONG_OPERATION_MS);
