@@ -574,7 +574,7 @@ const COPY = {
     addOwned: "Dodaj do kolekcji",
     addWanted: "Dodaj do „Po wypłacie”",
     notThis: "To nie ta. Popraw ręcznie",
-    labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło: MusicBrainz" }
+    labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło:" }
   },
   loader: {
     // null = losowo z listy default
@@ -961,7 +961,7 @@ $("deleteBtn").addEventListener("click", async () => {
 });
 
 /* =====================================================================
-   SKANER: aparat → EAN/UPC → MusicBrainz → podgląd → zatwierdzenie
+   SKANER: aparat → EAN/UPC → Discogs (zapas: MusicBrainz) → podgląd → zatwierdzenie
    ===================================================================== */
 let stream = null, scanLoop = null, zxingReader = null, scanning = false;
 
@@ -1046,10 +1046,33 @@ async function lookup(code) {
   // Duplikat po kodzie — sprawdzamy od razu, bez pytania internetu.
   const own = albums.find(a => a.barcode && a.barcode === code);
   let result = null, failed = false;
-  try { result = await withLoader(COPY.loader.lookup, () => searchMusicBrainz(code)); }
+  try { result = await withLoader(COPY.loader.lookup, () => searchBarcode(code)); }
   catch (err) { console.warn(err); failed = true; }
   closeScanner();
   showFound(result, code, failed, own);
+}
+// Kolejność: Discogs (przez funkcję w Supabase, token zostaje na serwerze) → MusicBrainz.
+// Błąd jednego źródła nie przerywa szukania; „błąd” pokazujemy tylko, gdy padły oba.
+async function searchBarcode(code) {
+  let rec = null, errors = 0;
+  try { rec = await searchDiscogs(code); } catch (err) { console.warn(err); errors++; }
+  if (rec && rec.image_url) return rec;
+  let mb = null;
+  try { mb = await searchMusicBrainz(code); } catch (err) { console.warn(err); errors++; }
+  if (rec) return { ...rec, image_url: mb?.image_url || null };   // Discogs bez okładki → okładka z MusicBrainz
+  if (mb) return mb;
+  if (errors === 2) throw new Error("all sources failed");
+  return null;
+}
+async function searchDiscogs(code) {
+  const { data, error } = await db.functions.invoke("discogs-barcode", { body: { barcode: code } });
+  if (error) throw error;
+  if (!data?.found) return null;
+  return { artist: data.artist, title: data.title, barcode: code, source_url: data.source_url, image_url: data.image_url || null };
+}
+function sourceLabel(url) {
+  const name = /discogs\.com/.test(url || "") ? "Discogs" : "MusicBrainz";
+  return `${COPY.scan.labels.source} ${name}`;
 }
 async function searchMusicBrainz(code) {
   const variants = new Set([code]);
@@ -1104,7 +1127,7 @@ function showFound(rec, code, failed, own) {
     el("div", {}, el("small", { text: COPY.scan.labels.artist }), el("b", { text: rec.artist })),
     el("div", {}, el("small", { text: COPY.scan.labels.title }), el("b", { text: rec.title })),
     el("div", { class: "src" }, el("span", { text: `${COPY.scan.labels.code} ${code}` }),
-      el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: COPY.scan.labels.source })));
+      el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: sourceLabel(rec.source_url) })));
   body.append(head, record, facts);
   if (dup) {
     const [t, x] = dup.status === "wanted" ? ["Masz to w „Po wypłacie”.", "Dodanie do kolekcji po prostu ją tam przeniesie."] : COPY.toast.duplicate;
