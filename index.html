@@ -100,14 +100,18 @@ img{max-width:100%}
 .search .input{padding-left:44px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:40px 28px}
 .card{display:flex;flex-direction:column;gap:8px;min-width:0}
-.card > .have,.card > .qty{margin-top:auto}   /* „Mam!” i licznik zawsze w jednej linii w rzędzie */
-/* Licznik egzemplarzy przy każdej płycie w kolekcji: − 2 egz. + */
-.qty{display:inline-flex;align-items:center;align-self:flex-start;gap:2px;padding:3px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
-.qty button{width:32px;height:32px;border:0;border-radius:50%;background:transparent;font-size:19px;font-weight:700;line-height:1;color:var(--ink)}
+.card{position:relative}
+.card > .have{margin-top:auto}   /* „Mam!” zawsze w jednej linii w rzędzie */
+/* Mały licznik egzemplarzy w rogu okładki: − 2 + (nie zabiera miejsca pod płytą) */
+.qty{position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:0;padding:2px;border-radius:15px;background:rgba(255,255,255,.92);box-shadow:0 1px 4px rgba(0,0,0,.18);backdrop-filter:blur(4px)}
+.qty button{width:24px;height:24px;border:0;border-radius:50%;background:transparent;font-size:16px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
+.qty button::before{content:"";position:absolute;inset:-6px}   /* większe pole dotyku niż widoczny przycisk */
 .qty button:hover:not(:disabled){background:var(--sunk)}
 .qty button:disabled{opacity:.3}
-.qty output{min-width:50px;text-align:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
-.qty.many{border-color:var(--ochre);background:var(--ochre-soft)}
+.qty output{min-width:18px;text-align:center;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.qty.many{background:var(--ink)}
+.qty.many button,.qty.many output{color:#fff}
+.qty.many button:hover:not(:disabled){background:rgba(255,255,255,.15)}
 .card-hit{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;text-align:left;min-width:0;border-radius:12px}
 .cover{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--sunk)}
 .cover img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1076,11 +1080,11 @@ function toastCopy(n) {
 // Licznik przy płycie: zmiana od razu na ekranie, zapis po krótkiej przerwie (kilka kliknięć = jeden zapis).
 function qtyNode(a) {
   const n = a.copies || 1;
-  const out = el("output", { "aria-live": "polite", text: `${n} egz.` });
+  const out = el("output", { "aria-live": "polite", text: String(n) });
   const minus = el("button", { type: "button", text: "−", "aria-label": `Jeden egzemplarz mniej: ${a.title}`, onclick: () => bump(-1) });
   const plus = el("button", { type: "button", text: "+", "aria-label": `Jeden egzemplarz więcej: ${a.title}`, onclick: () => bump(1) });
   const box = el("div", { class: "qty" + (n > 1 ? " many" : ""), role: "group", "aria-label": "Egzemplarze" }, minus, out, plus);
-  const sync = (v) => { out.textContent = `${v} egz.`; minus.disabled = v <= 1; plus.disabled = v >= 99; box.classList.toggle("many", v > 1); };
+  const sync = (v) => { out.textContent = String(v); out.setAttribute("aria-label", `${v} egz.`); minus.disabled = v <= 1; plus.disabled = v >= 99; box.classList.toggle("many", v > 1); };
   sync(n);
   function bump(d) {
     const v = Math.max(1, Math.min(99, (a.copies || 1) + d));
