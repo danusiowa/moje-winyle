@@ -24,7 +24,10 @@
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45;transition:background-color .35s ease}
+/* Tło w odcieniu sekcji: kolekcja ciepła ochrowa biel, „Po wypłacie” lekko różowa */
+body[data-view="owned"]{--bg:#FBF1DF}
+body[data-view="wanted"]{--bg:#FCEEF0}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -190,7 +193,7 @@ img{max-width:100%}
 .b-teal{background:var(--teal-soft);color:var(--teal-ink)} .b-grey{background:var(--sunk);color:var(--muted)} .b-danger{background:var(--danger-soft);color:var(--danger)}
 
 /* ---------- dialogi ---------- */
-dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:22px;width:min(520px,calc(100vw - 32px));max-height:calc(100svh - 32px);box-shadow:0 24px 70px rgba(30,28,25,.25)}
+dialog{border:0;padding:0;background:var(--surface);transition:background-color .3s ease;color:var(--ink);border-radius:22px;width:min(520px,calc(100vw - 32px));max-height:calc(100svh - 32px);box-shadow:0 24px 70px rgba(30,28,25,.25)}
 dialog::backdrop{background:rgba(46,47,51,.45)}
 .sheet{padding:26px;display:flex;flex-direction:column;gap:16px}
 .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
@@ -206,6 +209,8 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--sunk)}
 .seg button{flex:1 1 0;min-height:44px;border:0;border-radius:999px;background:transparent;font-weight:700;font-size:14px;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(46,47,51,.15)}
+.seg button[data-status="owned"][aria-pressed="true"]{background:var(--ochre);color:var(--vinyl);box-shadow:none}
+.seg button[data-status="wanted"][aria-pressed="true"]{background:var(--pink);color:var(--vinyl);box-shadow:none}
 .lbl-row{display:flex;align-items:center;gap:8px}
 .tip{position:relative;display:inline-flex}
 .tip-btn{position:relative;width:24px;height:24px;padding:0;border-radius:12px;border:1.5px solid var(--muted);background:none;color:var(--muted);font-size:13px;font-weight:800;line-height:1;display:grid;place-items:center}
@@ -233,6 +238,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .sheet-actions{display:flex;flex-direction:column;gap:10px;margin-top:4px}
 /* Karta płyty (podgląd przed edycją) */
 .detail-head h2{font-size:30px;line-height:1.1}
+#detailDialog{background:var(--sheet-bg, var(--surface))}
 .detail-head .sub{margin:4px 0 0;font-size:17px}
 .facts > .facts-grid:first-child{border-top:0;padding-top:0}
 .since{font-size:14px;color:var(--muted);text-align:center;margin:0}
@@ -309,6 +315,14 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .toast .badge .icon{width:18px;height:18px}
 .toast b{display:block;font-size:15px}
 .toast span{display:block;font-size:14px;color:var(--muted);line-height:1.35}
+/* Powiadomienia w kolorze sytuacji */
+.toast.k-success,.toast.k-mail{background:var(--teal);border-color:var(--teal);color:#fff}
+.toast.k-wanted{background:var(--pink);border-color:var(--pink);color:var(--vinyl)}
+.toast.k-dup{background:var(--ochre);border-color:var(--ochre);color:var(--vinyl)}
+.toast.k-deleted{background:var(--ink);border-color:var(--ink);color:#fff}
+.toast.k-error{background:var(--danger);border-color:var(--danger);color:#fff}
+.toast[class*="k-"] span{color:inherit;opacity:.86}
+.toast[class*="k-"] .badge{background:rgba(255,255,255,.28);color:inherit}
 /* Powiadomienie „spada” z góry z lekkim odbiciem. */
 @keyframes toastDrop{0%{opacity:0;transform:translateY(-110%) rotate(-1.5deg)}60%{opacity:1;transform:translateY(6px) rotate(.6deg)}80%{transform:translateY(-2px) rotate(0)}100%{transform:none}}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
@@ -987,7 +1001,7 @@ const TOAST_STYLE = {
 function toast(kind, pair) {
   const [title, text] = Array.isArray(pair[0]) ? pickFresh(pair) : pair;
   const [bc, ic] = TOAST_STYLE[kind] || TOAST_STYLE.success;
-  const t = el("div", { class: "toast", role: kind === "error" ? "alert" : "status" },
+  const t = el("div", { class: "toast k-" + (TOAST_STYLE[kind] ? kind : "success"), role: kind === "error" ? "alert" : "status" },
     el("span", { class: "badge " + bc }, svgUse(ic)),
     el("div", {}, el("b", { text: title }), el("span", { text: text })));
   // Gdy otwarte jest okno (karta płyty, formularz), powiadomienie idzie do niego — inaczej chowa się pod przyciemnieniem.
@@ -1053,6 +1067,7 @@ function authMode(mode) {
 }
 function showScreen(loggedIn) {
   $("authScreen").hidden = loggedIn; $("app").hidden = !loggedIn;
+  if (loggedIn) document.body.dataset.view = view; else delete document.body.dataset.view;
   document.body.classList.toggle("auth-only", !loggedIn);
 }
 
@@ -1211,6 +1226,7 @@ async function backfillCovers() {
 
 function setView(v, doRender = true) {
   view = v;
+  if (!$("app").hidden) document.body.dataset.view = v;
   document.querySelectorAll("[data-view]").forEach(b => {
     if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
@@ -1881,9 +1897,32 @@ function openDetails(a) {
     el("button", { class: "btn", type: "button", text: D.edit, onclick: () => { $("detailDialog").close(); openForm(a); } }),
     owned ? null : el("button", { class: "btn-ghost", type: "button", text: COPY.have, onclick: () => { $("detailDialog").close(); moveToOwned(a); } }));
   body.replaceChildren(head, record, facts, since, actions);
+  tintSheet(a);
   if (!$("detailDialog").open) { $("detailDialog").showModal(); modalOpened(); }
 }
 $("detailDialog").addEventListener("click", (e) => { if (e.target === $("detailDialog")) $("detailDialog").close(); });
+// Tło karty płyty: jasny odcień koloru okładki (zdjęcie z naszego magazynu albo kolor okładki zastępczej).
+const PH_TINTS = ["#FBEFD8", "#E1F2F0", "#FBE7EB", "#ECE8EF"];   // ochra, turkus, róż, winyl — jak .ph-0…3
+function tintSheet(a) {
+  const d = $("detailDialog");
+  const set = (c) => d.style.setProperty("--sheet-bg", c);
+  const fallback = () => set(PH_TINTS[hashIdx(a.id || a.title, 4)]);
+  const url = safeUrl(a.image_url);
+  if (!url || !isOwnCover(url)) { url ? d.style.removeProperty("--sheet-bg") : fallback(); return; }
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try {
+      const c = document.createElement("canvas"); c.width = c.height = 12;
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0, 12, 12);
+      const px = x.getImageData(0, 0, 12, 12).data; let r = 0, g = 0, b = 0;
+      for (let i = 0; i < px.length; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; }
+      const n = px.length / 4, mix = (v) => Math.round(v / n * 0.18 + 255 * 0.82);   // 18% koloru okładki, reszta biel
+      set(`rgb(${mix(r)},${mix(g)},${mix(b)})`);
+    } catch { d.style.removeProperty("--sheet-bg"); }
+  };
+  img.onerror = () => d.style.removeProperty("--sheet-bg");
+  img.src = url;
+}
 
 // Wiersze „Wydanie / Wytwórnia / Format” — tylko te, które mają dane.
 function releaseFacts(r) {
