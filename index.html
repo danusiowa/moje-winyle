@@ -159,6 +159,15 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .hint.warn{color:var(--danger)}
 .cover-preview{width:96px;border-radius:10px;aspect-ratio:1;object-fit:cover;border:1px solid var(--line)}
 .notice{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:var(--ochre-soft)}
+.notice .btn-mini{margin-top:10px}
+.btn-mini{min-height:38px;padding:0 16px;border:0;border-radius:19px;background:var(--ink);color:#fff;font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+/* Licznik egzemplarzy: − 2 + */
+.stepper{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:13px;background:var(--sunk);align-self:flex-start}
+.stepper button{width:44px;height:44px;border:0;border-radius:10px;background:var(--surface);font-size:22px;font-weight:700;line-height:1;box-shadow:0 1px 3px rgba(46,47,51,.15)}
+.stepper button:disabled{opacity:.35;box-shadow:none}
+.stepper output{min-width:44px;text-align:center;font-size:18px;font-weight:800}
+/* „×2” na okładce, gdy egzemplarzy jest więcej niż jeden */
+.copies{position:absolute;top:8px;right:8px;padding:3px 9px;border-radius:12px;background:var(--ink);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 .notice .icon{color:var(--ochre-ink)}
 .notice b{display:block}
 .notice span{font-size:14px;color:var(--muted)}
@@ -411,7 +420,8 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
     </div>
     <div class="notice" id="dupNotice" hidden>
       <svg class="icon"><use href="#i-copy"/></svg>
-      <div><b id="dupTitle"></b><span id="dupText"></span></div>
+      <div><b id="dupTitle"></b><span id="dupText"></span>
+        <button type="button" class="btn-mini" id="dupPlusBtn" hidden></button></div>
     </div>
     <div class="field"><label for="fArtist">Wykonawca</label><input class="input" id="fArtist" maxlength="160" placeholder="np. Fleetwood Mac" required></div>
     <div class="field"><label for="fTitle">Tytuł</label><input class="input" id="fTitle" maxlength="200" placeholder="np. Rumours" required></div>
@@ -443,6 +453,14 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <div class="seg" role="group" aria-labelledby="statusLbl">
         <button type="button" data-status="owned" aria-pressed="true">Moja kolekcja</button>
         <button type="button" data-status="wanted" aria-pressed="false">Po wypłacie</button>
+      </div>
+    </div>
+    <div class="field" id="copiesField">
+      <span class="lbl" id="copiesLbl">Egzemplarze</span>
+      <div class="stepper" role="group" aria-labelledby="copiesLbl">
+        <button type="button" id="copiesMinus" aria-label="Jeden egzemplarz mniej">−</button>
+        <output id="fCopies" aria-live="polite">1</output>
+        <button type="button" id="copiesPlus" aria-label="Jeden egzemplarz więcej">+</button>
       </div>
     </div>
     <input type="hidden" id="fBarcode"><input type="hidden" id="fSource"><input type="hidden" id="fMaster">
@@ -536,6 +554,7 @@ const COPY = {
     wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”" }
   },
   // [liczba, komentarz]
+  // n = liczba egzemplarzy (płyta w 2 egzemplarzach liczy się podwójnie — tyle stoi na półce)
   ownedSub(n) {
     const c = `${n} ${plural(n, "płyta", "płyty", "płyt")}`;
     if (n < 10)  return [c, "Skromnie. Na razie."];
@@ -567,6 +586,8 @@ const COPY = {
     imgBroken: "To chyba link do strony, nie do obrazka. Zajrzyj pod znak zapytania.",
     add: "Dodaj",
     addAnyway: "Dodaj mimo to",
+    addSeparate: "Dodaj jako osobne wydanie",
+    plusOne: (n) => `+1 egzemplarz (będzie ${n})`,
     save: "Zapisz zmiany",
     missing: "Brakuje wykonawcy lub tytułu. Telepatii jeszcze nie wdrożyliśmy.",
     badUrl: "Link do okładki musi zaczynać się od http:// lub https://.",
@@ -631,6 +652,19 @@ const COPY = {
       "Wypłata przyszła i od razu wyszła."
     ].map(t => ["Przeniesiono do kolekcji", t]),
     get movedFromWanted() { return this.moved; },
+    // Kolejny egzemplarz tej samej płyty; {n} = ile jest teraz.
+    copyAdded: [
+      "Masz już {n}. Na wypadek, gdyby pierwszy się zmęczył.",
+      "Egzemplarzy: {n}. Jeden do słuchania, reszta do patrzenia.",
+      "Sztuk: {n}. Nie oceniamy. No dobra, trochę oceniamy.",
+      "Teraz {n}. Zapas na czarną godzinę i czarną płytę.",
+      "Egzemplarzy: {n}. Ktoś tu ma bardzo konkretny gust.",
+      "Licznik: {n}. Półka zaczyna widzieć podwójnie.",
+      "Licznik pokazuje {n}. Konsekwencja godna podziwu.",
+      "Masz {n}. Jeden pewnie „dla gości”.",
+      "Egzemplarzy: {n}. Tego tłoczenia nikt ci już nie odbierze."
+    ],
+    copiesUpdated: ["Zmieniono liczbę egzemplarzy", "Inwentaryzacja zakończona. Wynik: niepokojący."],
     updated: [["Zapisano zmiany", "Udawajmy, że od początku tak było."]],
     deleted: [["Usunięto płytę", "Rozsądek pojawił się z imponującym opóźnieniem."]],
     duplicate: ["To już masz.", "Ale wiadomo — ten egzemplarz jest zupełnie inny."],
@@ -857,7 +891,7 @@ async function enterApp() {
 }
 async function loadAlbums() {
   const { data, error } = await withLoader(null, () =>
-    db.from("albums").select("id, artist, title, image_url, source_url, barcode, status, created_at, year, country, label, catalog_number, format, master_url").order("created_at", { ascending: false }));
+    db.from("albums").select("id, artist, title, image_url, source_url, barcode, status, created_at, year, country, label, catalog_number, format, master_url, copies").order("created_at", { ascending: false }));
   loadFailed = !!error;
   albums = error ? [] : (data || []);
   render();
@@ -974,7 +1008,7 @@ function render() {
   const shown = q ? list.filter(a => norm(a.artist + " " + a.title).includes(q)) : list;
   if (loadFailed || !list.length) $("viewSub").replaceChildren();
   else {
-    const [count, joke] = view === "owned" ? COPY.ownedSub(list.length) : COPY.wantedSub(list.length);
+    const [count, joke] = view === "owned" ? COPY.ownedSub(list.reduce((s, a) => s + (a.copies || 1), 0)) : COPY.wantedSub(list.length);
     $("viewSub").replaceChildren(el("span", { class: "count" + (view === "wanted" ? " wanted" : ""), text: count }), el("span", { text: joke }));
   }
 
@@ -990,8 +1024,11 @@ function render() {
     return;
   }
   grid.replaceChildren(...shown.map(a => {
-    const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}. Edytuj`, onclick: () => openForm(a) },
-      coverNode(a), el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
+    const cover = coverNode(a);
+    if (view === "owned" && (a.copies || 1) > 1) cover.append(el("span", { class: "copies", text: "×" + a.copies, "aria-hidden": "true" }));
+    const copiesLabel = (a.copies || 1) > 1 ? `, ${a.copies} ${plural(a.copies, "egzemplarz", "egzemplarze", "egzemplarzy")}` : "";
+    const hit = el("button", { class: "card-hit", type: "button", "aria-label": `${a.title}, ${a.artist}${copiesLabel}. Edytuj`, onclick: () => openForm(a) },
+      cover, el("span", { class: "meta" }, el("b", { text: a.title }), el("span", { text: a.artist })));
     const card = el("article", { class: "card" }, hit);
     if (view === "wanted") card.append(el("button", { class: "have", type: "button", text: COPY.have, "aria-label": `${COPY.have} ${a.title}`, onclick: () => moveToOwned(a) }));
     return card;
@@ -1004,9 +1041,35 @@ function findDuplicate({ artist, title, barcode }, exceptId) {
 }
 
 async function moveToOwned(a) {
+  const owned = albums.find(x => x.id !== a.id && x.status === "owned" && sameRecord(x, a));
+  if (owned) {   // już jest w kolekcji → +1 egzemplarz, wpis z listy życzeń znika
+    const n = Math.min(99, (owned.copies || 1) + 1);
+    const { error } = await withLoader(COPY.loader.save, async () => {
+      const r = await db.from("albums").update({ copies: n }).eq("id", owned.id);
+      return r.error ? r : db.from("albums").delete().eq("id", a.id);
+    });
+    if (error) { toast("error", COPY.toast.saveError); return; }
+    owned.copies = n; albums = albums.filter(x => x.id !== a.id); removeOwnCover(a.image_url);
+    render(); toastCopy(n); return;
+  }
   const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update({ status: "owned" }).eq("id", a.id));
   if (error) { toast("error", COPY.toast.saveError); return; }
   a.status = "owned"; render(); toast("success", COPY.toast.moved);
+}
+// Ta sama płyta: ten sam kod kreskowy albo ten sam wykonawca + tytuł.
+function sameRecord(x, y) {
+  return (x.barcode && y.barcode && x.barcode === y.barcode) || (norm(x.artist) + "|" + norm(x.title) === norm(y.artist) + "|" + norm(y.title));
+}
+function toastCopy(n) {
+  toast("success", ["Dodano kolejny egzemplarz", pickFresh(COPY.toast.copyAdded).replace("{n}", n)]);
+}
+// +1 egzemplarz istniejącej płyty zamiast nowego wpisu.
+async function incrementCopies(a) {
+  const n = Math.min(99, (a.copies || 1) + 1);
+  const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update({ copies: n }).eq("id", a.id));
+  if (error) { toast("error", COPY.toast.saveError); return false; }
+  a.copies = n; closeAllAdd(); setView("owned"); toastCopy(n);
+  return true;
 }
 
 /* =====================================================================
@@ -1014,13 +1077,24 @@ async function moveToOwned(a) {
    ===================================================================== */
 let editing = null, formStatus = "owned", dupConfirmed = false;
 
+let formCopies = 1;
+function setFormCopies(n) {
+  formCopies = Math.max(1, Math.min(99, n));
+  $("fCopies").textContent = formCopies;
+  $("copiesMinus").disabled = formCopies <= 1; $("copiesPlus").disabled = formCopies >= 99;
+}
+$("copiesMinus").addEventListener("click", () => setFormCopies(formCopies - 1));
+$("copiesPlus").addEventListener("click", () => setFormCopies(formCopies + 1));
 function setFormStatus(s) {
   formStatus = s;
+  $("copiesField").hidden = s !== "owned";   // egzemplarze liczymy tylko w kolekcji
   document.querySelectorAll("[data-status]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.status === s)));
   resetDup();
 }
 document.querySelectorAll("[data-status]").forEach(b => b.addEventListener("click", () => setFormStatus(b.dataset.status)));
-function resetDup() { dupConfirmed = false; $("dupNotice").hidden = true; $("saveBtn").textContent = editing ? COPY.form.save : COPY.form.add; }
+function resetDup() { dupConfirmed = false; $("dupNotice").hidden = true; $("dupPlusBtn").hidden = true; $("saveBtn").textContent = editing ? COPY.form.save : COPY.form.add; }
+let dupTarget = null;
+$("dupPlusBtn").addEventListener("click", () => { if (dupTarget) incrementCopies(dupTarget); });
 ["fArtist", "fTitle"].forEach(id => $(id).addEventListener("input", resetDup));
 function setImgHint(warn) {
   $("imgHint").textContent = warn ? COPY.form.imgBroken : COPY.form.imgHint;
@@ -1057,6 +1131,7 @@ function openForm(a = null, prefill = {}) {
   $("fArtist").value = src.artist || ""; $("fTitle").value = src.title || "";
   $("fImage").value = src.image_url || ""; $("fBarcode").value = src.barcode || ""; $("fSource").value = src.source_url || "";
   $("fMaster").value = src.master_url || "";
+  setFormCopies(a ? (a.copies || 1) : 1);
   $("fYear").value = src.year || ""; $("fCountry").value = countryName(src.country);
   $("fLabel").value = src.label || ""; $("fCatno").value = src.catalog_number || ""; $("fFormat").value = src.format || "";
   if (!$("countryList").childElementCount)
@@ -1081,7 +1156,8 @@ $("albumForm").addEventListener("submit", async (e) => {
     // Te same reguły co dla danych ze skanu, więc ręcznie wpisane pola wyglądają tak samo.
     year: cleanYear($("fYear").value), country: toCountryCode($("fCountry").value),
     label: cleanName($("fLabel").value), catalog_number: cleanCatno($("fCatno").value),
-    format: $("fFormat").value.replace(/\s+/g, " ").trim() || null
+    format: $("fFormat").value.replace(/\s+/g, " ").trim() || null,
+    copies: formStatus === "owned" ? formCopies : 1
   };
   if (!payload.artist || !payload.title) { $("formError").textContent = COPY.form.missing; return; }
   if ($("fYear").value.trim() && !payload.year) { $("formError").textContent = COPY.form.badYear; return; }
@@ -1095,7 +1171,8 @@ $("albumForm").addEventListener("submit", async (e) => {
     });
     if (error) { if (coverChanged) removeOwnCover(payload.image_url); toast("error", COPY.toast.saveError); return; }
     if (coverChanged) removeOwnCover(oldCover);
-    Object.assign(editing, payload); $("albumDialog").close(); render(); toast("success", COPY.toast.updated);
+    const copiesOnly = payload.copies !== (editing.copies || 1);
+    Object.assign(editing, payload); $("albumDialog").close(); render(); toast("success", copiesOnly ? COPY.toast.copiesUpdated : COPY.toast.updated);
     return;
   }
   await addAlbum(payload, { fromForm: true });
@@ -1111,10 +1188,15 @@ async function addAlbum(payload, { fromForm = false } = {}) {
     dup.status = "owned"; closeAllAdd(); setView("owned"); toast("success", COPY.toast.movedFromWanted); return true;
   }
   if (dup && dup.status === payload.status && !dupConfirmed) {
-    const [t, x] = payload.status === "owned" ? COPY.toast.duplicate : COPY.toast.duplicateWanted;
+    const owned = payload.status === "owned";
+    const [t, x] = owned ? dupText(dup) : COPY.toast.duplicateWanted;
     if (fromForm) {
       $("dupTitle").textContent = t; $("dupText").textContent = x; $("dupNotice").hidden = false;
-      $("saveBtn").textContent = COPY.form.addAnyway; dupConfirmed = true;
+      // W kolekcji: +1 egzemplarz albo osobny wpis (np. inne tłoczenie). Na liście życzeń: tylko „mimo to”.
+      dupTarget = owned ? dup : null;
+      $("dupPlusBtn").hidden = !owned;
+      if (owned) $("dupPlusBtn").textContent = COPY.form.plusOne(Math.min(99, (dup.copies || 1) + 1));
+      $("saveBtn").textContent = owned ? COPY.form.addSeparate : COPY.form.addAnyway; dupConfirmed = true;
       return false;
     }
     toast("dup", [t, x]);
@@ -1128,6 +1210,10 @@ async function addAlbum(payload, { fromForm = false } = {}) {
   albums.unshift(data); closeAllAdd(); setView(payload.status);
   toast(payload.status === "owned" ? "success" : "wanted", payload.status === "owned" ? COPY.toast.addedOwned : COPY.toast.addedWanted);
   return true;
+}
+function dupText(dup) {
+  const n = dup.copies || 1;
+  return n > 1 ? ["To już masz.", `Dokładnie ${n} ${plural(n, "egzemplarz", "egzemplarze", "egzemplarzy")}. Ale wiadomo — ten jest zupełnie inny.`] : COPY.toast.duplicate;
 }
 function closeAllAdd() { if ($("albumDialog").open) $("albumDialog").close(); closeFound(); dupConfirmed = false; }
 
@@ -1448,12 +1534,20 @@ function showFound(rec, code, failed, own) {
         el("a", { href: rec.source_url, target: "_blank", rel: "noopener", text: sourceLabel(rec.source_url) }))));
   body.append(head, record, facts);
   if (dup) {
-    const [t, x] = dup.status === "wanted" ? ["Masz to w „Po wypłacie”.", "Dodanie do kolekcji po prostu ją tam przeniesie."] : COPY.toast.duplicate;
+    const [t, x] = dup.status === "wanted" ? ["Masz to w „Po wypłacie”.", "Dodanie do kolekcji po prostu ją tam przeniesie."] : dupText(dup);
     body.append(el("div", { class: "notice" }, svgUse("i-copy"), el("div", {}, el("b", { text: t }), el("span", { text: x }))));
   }
+  // Płyta już jest w kolekcji: ten sam kod → domyślnie +1 egzemplarz; tylko tytuł się zgadza
+  // (pewnie inne wydanie) → domyślnie osobny wpis. Druga opcja zawsze dostępna jako link.
+  const ownedDup = dup && dup.status === "owned" ? dup : null;
+  const plusBtn = (cls) => el("button", { class: cls, type: "button", text: COPY.form.plusOne(Math.min(99, (ownedDup.copies || 1) + 1)), onclick: () => incrementCopies(ownedDup) });
+  const separateBtn = (cls, text) => el("button", { class: cls, type: "button", text, onclick: () => { dupConfirmed = true; addAlbum({ ...rec, status: "owned" }); } });
+  const sameEdition = ownedDup && ownedDup.barcode && ownedDup.barcode === rec.barcode;
   const actions = el("div", { class: "sheet-actions", style: "margin-top:auto" },
-    el("button", { class: "btn", type: "button", text: COPY.scan.addOwned, onclick: () => { dupConfirmed = true; addAlbum({ ...rec, status: "owned" }); } }),
+    !ownedDup ? separateBtn("btn", COPY.scan.addOwned)
+      : sameEdition ? plusBtn("btn") : separateBtn("btn", COPY.form.addSeparate),
     el("button", { class: "btn-ghost", type: "button", text: COPY.scan.addWanted, onclick: () => { dupConfirmed = false; addAlbum({ ...rec, status: "wanted" }); } }),
+    ownedDup ? (sameEdition ? separateBtn("link", COPY.form.addSeparate) : plusBtn("link")) : null,
     el("button", { class: "link", type: "button", text: COPY.scan.notThis, onclick: () => { closeFound(); openForm(null, rec); } }));
   body.append(actions);
 }
