@@ -708,6 +708,7 @@ const COPY = {
     get inviteOnly() { return ["Konta tylko na zaproszenie.", sessionPick("auth.invite", ["Selekcja ostrzejsza niż w sklepie z winylami.", "Lista gości krótsza niż limitowany nakład."])]; },
     signupPrompt: "Nie masz konta?",
     badLogin: "Nieprawidłowy e-mail lub hasło. Bramkarz kręci głową.",
+    linkExpired: "Ten link już nie działa. Jak płyta po stu odsłuchach. Poproś o nowy.",
     emptyFields: "Wpisz e-mail i hasło. Na słowo honoru nie wpuszczamy.",
     resetSent: ["Sprawdź skrzynkę", "Wysłane. Tym razem zapisz hasło."],
     passMismatch: "Hasła się różnią. Jak oryginalne tłoczenie i reedycja.",
@@ -1083,6 +1084,16 @@ document.querySelectorAll(".pw-toggle").forEach(b => b.addEventListener("click",
 // Typ linku z maila (zaproszenie / reset hasła) — czytamy, zanim klient wyczyści adres.
 const URL_AUTH_TYPE = new URLSearchParams(location.hash.slice(1)).get("type")
                    || new URLSearchParams(location.search).get("type");
+// Zaproszenie z aplikacji: #zaproszenie=<kod>&typ=invite|recovery. Kod zużywamy dopiero tutaj,
+// w przeglądarce osoby (podgląd linku w komunikatorze nie uruchamia skryptów, więc go nie zużyje).
+const INVITE = (() => {
+  const q = new URLSearchParams(location.hash.slice(1));
+  const token = q.get("zaproszenie"), type = q.get("typ") === "recovery" ? "recovery" : "invite";
+  return token ? { token, type } : null;
+})();
+// Link, który już nie działa (wygasł albo został zużyty), Supabase odsyła z #error_code=…
+const LINK_ERROR = new URLSearchParams(location.hash.slice(1)).get("error_code");
+if (INVITE || LINK_ERROR) history.replaceState(null, "", location.pathname + location.search);   // kod nie zostaje w adresie
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
 
 function authMode(mode) {
@@ -1156,7 +1167,7 @@ $("logoutBtn").addEventListener("click", async () => {
   await db.auth.signOut();
 });
 
-let pendingPasswordSetup = URL_AUTH_TYPE === "invite" || URL_AUTH_TYPE === "recovery";
+let pendingPasswordSetup = URL_AUTH_TYPE === "invite" || URL_AUTH_TYPE === "recovery" || !!INVITE;
 db.auth.onAuthStateChange((event, session) => {
   if (event === "PASSWORD_RECOVERY") { pendingPasswordSetup = true; showScreen(false); authMode("password"); return; }
   if (event === "SIGNED_IN" && session) {
@@ -2127,6 +2138,11 @@ window.addEventListener("popstate", async () => {
    ===================================================================== */
 (async () => {
   authMode("login");
+  if (INVITE) {
+    // Aktywacja konta z zaproszenia, potem ekran „Ustaw hasło”.
+    const { error } = await withLoader(null, () => db.auth.verifyOtp({ token_hash: INVITE.token, type: INVITE.type }));
+    if (error) { console.warn(error); pendingPasswordSetup = false; showScreen(false); $("loginError").textContent = COPY.auth.linkExpired; return; }
+  } else if (LINK_ERROR) { showScreen(false); $("loginError").textContent = COPY.auth.linkExpired; return; }
   const { data: { session } } = await db.auth.getSession();
   if (session && pendingPasswordSetup) { showScreen(false); authMode("password"); }
   else if (session) enterApp();

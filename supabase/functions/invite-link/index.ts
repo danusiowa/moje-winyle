@@ -6,6 +6,10 @@
 // administratorka z ADMIN_EMAILS — inaczej ktoś mógłby przejąć cudze konto.
 //
 // Wejście:    { email: "osoba@poczta.pl" }
+// Link prowadzi do samej aplikacji (#zaproszenie=…), a nie do Supabase: podglądy linków
+// w WhatsAppie, Messengerze czy SMS-ach „otwierają” adres i zużywały jednorazowy kod.
+// Fragment po # nie trafia do serwera, a kod zużywa dopiero aplikacja w przeglądarce osoby.
+//
 // Odpowiedź:  { link, existing }  — existing = true, gdy konto już było (link ustawia nowe hasło; tylko admin)
 //             albo { error: "exists" } (konto już jest, pyta nie-admin) albo inny { error }
 
@@ -52,7 +56,9 @@ Deno.serve(async (req) => {
     existing = true;
     res = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo: APP_URL } });
   }
-  if (res.error || !res.data?.properties?.action_link) return json(req, { error: "generate failed" }, 500);
+  const token = res.data?.properties?.hashed_token;
+  if (res.error || !token) return json(req, { error: "generate failed" }, 500);
 
-  return json(req, { link: res.data.properties.action_link, existing });
+  const link = `${APP_URL}#zaproszenie=${encodeURIComponent(token)}&typ=${existing ? "recovery" : "invite"}`;
+  return json(req, { link, existing });
 });
