@@ -106,16 +106,7 @@ img{max-width:100%}
 .meta .artist-row{display:flex;align-items:baseline;gap:6px;min-width:0;white-space:nowrap}
 .meta .artist-row > span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .meta .artist-row > .xn{flex-shrink:0;overflow:visible;padding:0 7px;border-radius:9px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;line-height:18px}
-/* Licznik − 2 + na karcie płyty */
-.qty{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:20px;background:var(--surface);border:1px solid var(--line);align-self:flex-start}
-.qty button{width:34px;height:34px;border:0;border-radius:50%;background:transparent;font-size:19px;font-weight:700;line-height:1;color:var(--ink);padding:0;position:relative}
-.qty button::before{content:"";position:absolute;inset:-6px}   /* większe pole dotyku niż widoczny przycisk */
-.qty button:hover:not(:disabled){background:var(--sunk)}
-.qty button:disabled{opacity:.3}
-.qty output{min-width:30px;text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
-.qty.many{background:var(--ink);border-color:var(--ink)}
-.qty.many button,.qty.many output{color:#fff}
-.qty.many button:hover:not(:disabled){background:rgba(255,255,255,.15)}
+
 .card-hit{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;text-align:left;min-width:0;border-radius:12px}
 .cover{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--sunk)}
 .cover img{width:100%;height:100%;object-fit:cover;display:block}
@@ -241,10 +232,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
 .facts .src-links{display:flex;gap:12px;flex-wrap:wrap}
 .facts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
 .facts-grid > div:last-child:nth-child(odd),.facts-grid > .wide{grid-column:1/-1}
-.facts-grid > div > .qty-wrap{margin-top:4px}
-.qty-wrap{display:flex;align-items:center;gap:12px}
-.qty-status{font-size:14px;color:var(--muted);font-weight:500}
-.qty-status.ok{color:var(--teal-ink);font-weight:700}
+
 .facts-grid span{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 
 /* ---------- loader ---------- */
@@ -704,8 +692,6 @@ const COPY = {
   },
   details: {
     edit: "Edytuj płytę",
-    saving: "Zapisuję…",
-    saved: "Zapisano ✓",
     noFactsScan: "Brak szczegółów wydania. Zeskanuj kod z okładki albo uzupełnij je w edycji.",
     noFactsCode: "Brak szczegółów wydania. Kod kreskowy jest, więc wystarczy jedno kliknięcie.",
     noFactsDesktop: "Brak szczegółów wydania. Uzupełnisz je w edycji albo skanem na telefonie.",
@@ -1122,41 +1108,6 @@ function sameRecord(x, y) {
 function toastCopy(n) {
   toast("success", ["Dodano kolejny egzemplarz", pickFresh(COPY.toast.copyAdded).replace("{n}", n)]);
 }
-// Licznik przy płycie: zmiana od razu na ekranie, zapis po krótkiej przerwie (kilka kliknięć = jeden zapis).
-function qtyNode(a) {
-  const n = a.copies || 1;
-  const out = el("output", { "aria-live": "polite", text: String(n) });
-  const minus = el("button", { type: "button", text: "−", "aria-label": `Jeden egzemplarz mniej: ${a.title}`, onclick: () => bump(-1) });
-  const plus = el("button", { type: "button", text: "+", "aria-label": `Jeden egzemplarz więcej: ${a.title}`, onclick: () => bump(1) });
-  const stepper = el("div", { class: "qty" + (n > 1 ? " many" : ""), role: "group", "aria-label": "Egzemplarze" }, minus, out, plus);
-  // Status zapisu obok licznika: „Zapisuję…” → „Zapisano ✓”. Bez „Edytuj” i „Zapisz”.
-  const status = el("span", { class: "qty-status", "aria-live": "polite" });
-  const box = el("div", { class: "qty-wrap" }, stepper, status);
-  const sync = (v) => { out.textContent = String(v); out.setAttribute("aria-label", `${v} egz.`); minus.disabled = v <= 1; plus.disabled = v >= 99; stepper.classList.toggle("many", v > 1); };
-  sync(n);
-  const save = async () => {
-    clearTimeout(a._qtyTimer); a._qtyTimer = null; a._qtyFlush = null;
-    const before = a._saved; a._saved = null;
-    if (before == null || a.copies === before) { status.textContent = ""; return; }
-    const { error } = await db.from("albums").update({ copies: a.copies }).eq("id", a.id);
-    if (error) { a.copies = before; sync(before); render(); status.textContent = ""; toast("error", COPY.toast.saveError); return; }
-    status.textContent = COPY.details.saved; status.classList.add("ok");
-    clearTimeout(status._t); status._t = setTimeout(() => { status.textContent = ""; status.classList.remove("ok"); }, 2500);
-  };
-  function bump(d) {
-    const v = Math.max(1, Math.min(99, (a.copies || 1) + d));
-    if (v === (a.copies || 1)) return;
-    if (a._saved == null) a._saved = a.copies || 1;
-    a.copies = v; sync(v); render();
-    status.textContent = COPY.details.saving; status.classList.remove("ok");
-    clearTimeout(a._qtyTimer);
-    a._qtyTimer = setTimeout(save, 600);
-    a._qtyFlush = save;            // zamknięcie karty zapisuje od razu
-  }
-  return box;
-}
-// Zamknięcie karty płyty albo przejście do edycji: niezapisana zmiana licznika idzie od razu.
-function flushQty() { for (const a of albums) if (a._qtyFlush) a._qtyFlush(); }
 // +1 egzemplarz istniejącej płyty zamiast nowego wpisu.
 async function incrementCopies(a) {
   const n = Math.min(99, (a.copies || 1) + 1);
@@ -1626,7 +1577,7 @@ function openDetails(a) {
   const record = el("div", { class: "record" }, el("div", { class: "disc" }), coverNode(a));
   const rows = releaseFacts(a);
   const extra = [];
-  if (owned) extra.push(el("div", { class: "wide" }, el("small", { text: D.copies }), qtyNode(a)));
+  if (owned) extra.push(el("div", {}, el("small", { text: D.copies }), el("span", { text: String(a.copies || 1) })));
   // Czego brakuje i jak to uzupełnić: po kodzie (wszędzie) albo skanem (tylko telefon).
   const missing = !a.year || !a.label || !a.format || !a.catalog_number || !a.country;
   const fill = !missing ? null
@@ -1652,7 +1603,6 @@ function openDetails(a) {
   if (!$("detailDialog").open) $("detailDialog").showModal();
 }
 $("detailDialog").addEventListener("click", (e) => { if (e.target === $("detailDialog")) $("detailDialog").close(); });
-$("detailDialog").addEventListener("close", flushQty);
 
 // Wiersze „Wydanie / Wytwórnia / Format” — tylko te, które mają dane.
 function releaseFacts(r) {
