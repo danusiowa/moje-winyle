@@ -104,6 +104,7 @@ img{max-width:100%}
 .search-clear .icon{width:16px;height:16px;position:static;transform:none;color:currentColor}
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .sort{position:relative}
+.sort-ic{display:none}
 .sort select{appearance:none;-webkit-appearance:none;min-height:50px;padding:0 40px 0 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232E2F33' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 16px center;font:inherit;font-size:15px;font-weight:600;color:var(--ink)}
 .sort select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
 /* Błąd przy konkretnym polu */
@@ -307,8 +308,13 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
   .toasts{left:16px;right:16px;width:auto;top:calc(12px + env(safe-area-inset-top))}
   .tools{width:100%;flex-wrap:nowrap}
   .tools .search{flex:1 1 auto;min-width:0;width:auto}
-  .sort select{padding:0 32px 0 14px;font-size:14px;background-position:right 12px center}
-  .tools .sort{flex:0 0 auto}
+  /* Telefon: sortowanie jako ikona (natywna lista pod spodem), żeby wyszukiwarka miała miejsce */
+  .tools .sort{flex:0 0 auto;width:50px;height:50px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);display:grid;place-items:center}
+  .tools .sort:focus-within{border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-soft)}
+  .sort-ic{display:block;width:22px;height:22px;color:var(--ink);pointer-events:none}
+  .sort select{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0}
+  .search .input{padding-left:40px;font-size:15px}
+  .search .icon{left:12px}
   dialog{width:100%;max-width:none;max-height:92svh;margin:auto 0 0;border-radius:22px 22px 0 0}
   dialog.confirm{width:calc(100vw - 32px);margin:auto;border-radius:20px}
   .sheet{padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
@@ -351,6 +357,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
   <symbol id="i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M8 9v6M11 9v6M13 9v6M16 9v6"/></symbol>
@@ -436,7 +443,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
           <input class="input" id="search" type="search" autocomplete="off" enterkeyhint="search">
           <button type="button" class="search-clear" id="searchClear" aria-label="Wyczyść wyszukiwanie" hidden><svg class="icon"><use href="#i-x"/></svg></button>
         </div>
-        <label class="sort"><span class="sr">Sortuj według</span>
+        <label class="sort"><span class="sr">Sortuj według</span><svg class="icon sort-ic" aria-hidden="true"><use href="#i-sort"/></svg>
           <select id="sort">
             <option value="new">Najnowsze</option>
             <option value="old">Najstarsze</option>
@@ -621,8 +628,8 @@ const COPY = {
     get loggedOut() { return ["Wylogowano", pickFresh(this.loggedOutLines)]; }
   },
   views: {
-    owned:  { title: "Moja kolekcja", search: "Czego szukasz? Pewnie to masz", searchShort: "Pewnie to masz" },
-    wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”", searchShort: "Szukaj na liście" }
+    owned:  { title: "Moja kolekcja", search: "Czego szukasz? Pewnie to masz", searchShort: "Czego szukasz? Pewnie to masz", searchTiny: "Pewnie to masz" },
+    wanted: { title: "Po wypłacie",  search: "Szukaj w „Po wypłacie”", searchShort: "Szukaj na liście", searchTiny: "Szukaj na liście" }
   },
   // [liczba, komentarz]
   // n = liczba egzemplarzy (płyta w 2 egzemplarzach liczy się podwójnie — tyle stoi na półce)
@@ -1135,7 +1142,8 @@ function setView(v, doRender = true) {
   });
   $("viewTitle").replaceChildren(COPY.views[v].title);
   if (v === "wanted") $("viewTitle").append(svgUse("i-heart"));
-  $("search").placeholder = isDesktop() ? COPY.views[v].search : COPY.views[v].searchShort;
+  // Komputer: pełny tekst; telefon: krótszy; najwęższe ekrany (<390 px): najkrótszy, żeby się nie ucinał.
+  $("search").placeholder = isDesktop() ? COPY.views[v].search : innerWidth < 390 ? COPY.views[v].searchTiny : COPY.views[v].searchShort;
   if (doRender) render();
 }
 document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { $("search").value = ""; syncSearchClear(); setView(b.dataset.view); window.scrollTo({ top: 0 }); }));
