@@ -376,7 +376,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
     <form id="loginForm" class="auth-form" novalidate>
       <div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" type="email" autocomplete="email" placeholder="adres@poczta.pl" required></div>
       <div class="field"><label for="loginPass">Hasło</label><input class="input" id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
-      <button type="button" class="link" id="toResetBtn" style="align-self:flex-end">Nie pamiętasz hasła?</button>
+      <button type="button" class="link" id="toResetBtn" style="align-self:flex-end">Tytuły pamiętasz, hasło nie?</button>
       <div class="form-error" id="loginError" role="alert"></div>
       <button class="btn" type="submit">Zaloguj się</button>
     </form>
@@ -385,7 +385,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <div class="field"><label for="resetEmail">E-mail</label><input class="input" id="resetEmail" type="email" autocomplete="email" placeholder="adres@poczta.pl" required></div>
       <div class="form-error" id="resetError" role="alert"></div>
       <button class="btn" type="submit">Wyślij link</button>
-      <button type="button" class="link" data-back-to-login style="align-self:center">Wróć do logowania</button>
+      <button type="button" class="link" data-back-to-login style="align-self:center">Fałszywy alarm, loguję się</button>
     </form>
 
     <form id="passwordForm" class="auth-form" novalidate hidden>
@@ -400,7 +400,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <div class="field"><label for="signupPass">Hasło</label><input class="input" id="signupPass" type="password" autocomplete="new-password" minlength="8" placeholder="Minimum 8 znaków" required></div>
       <div class="form-error" id="signupError" role="alert"></div>
       <button class="btn" type="submit">Załóż konto</button>
-      <button type="button" class="link" data-back-to-login style="align-self:center">Mam już konto</button>
+      <button type="button" class="link" data-back-to-login style="align-self:center">Mam konto. I problem też</button>
     </form>
 
     <div class="auth-foot" id="authFoot"></div>
@@ -520,7 +520,7 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
     <div class="form-error" id="formError" role="alert"></div>
     <div class="sheet-actions">
       <button class="btn" type="submit" id="saveBtn"></button>
-      <button type="button" class="link" id="deleteBtn" hidden>Usuń płytę</button>
+      <button type="button" class="link" id="deleteBtn" hidden>Usuń. Bez sentymentów</button>
     </div>
   </form>
 </dialog>
@@ -553,12 +553,12 @@ dialog::backdrop{background:rgba(46,47,51,.45)}
       <button type="submit">Szukaj</button>
     </form>
   </div>
-  <button class="btn-ghost" id="scanManualBtn">Wpisz ręcznie</button>
+  <button class="btn-ghost" id="scanManualBtn">Dodaj ręcznie, jak za dawnych lat</button>
 </section>
 
 <!-- ================= WYNIK SKANU ================= -->
 <section id="found" class="scanner found" hidden aria-labelledby="foundTitle">
-  <div class="scanner-top"><button class="link" id="rescanBtn" style="display:flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;font-weight:700"><svg class="icon"><use href="#i-back"/></svg>Skanuj ponownie</button><button class="close" data-found-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="scanner-top"><button class="link" id="rescanBtn" style="display:flex;align-items:center;gap:4px;color:var(--ink);text-decoration:none;font-weight:700"><svg class="icon"><use href="#i-back"/></svg>Jeszcze raz, z uczuciem</button><button class="close" data-found-close aria-label="Zamknij"><svg class="icon"><use href="#i-x"/></svg></button></div>
   <div class="scanner-body" id="foundBody"></div>
 </section>
 
@@ -637,7 +637,7 @@ const COPY = {
     return [`${n} ${plural(n, "płyta", "płyty", "płyt")}`, "Wypłata jest jedna."];
   },
   empty: {
-    owned:    ["Zero płyt.", "Gratulacje, finanse jeszcze żyją.", "Dodaj pierwszą"],
+    owned:    ["Zero płyt.", "Gratulacje, finanse jeszcze żyją.", "Dodaj pierwszą. Od jednej się zaczyna"],
     wanted:   ["Zero planów zakupowych.", "Podejrzanie rozsądnie."],
     noResult: ["Nie masz.", "Tak, to jest dokładnie ten moment, w którym zaczyna się problem.", "Wyczyść wyszukiwanie"],
     noResultWanted: ["Nie ma tego na liście.", "Ale zawsze może się pojawić. Zwykle się pojawia.", "Wyczyść wyszukiwanie"],
@@ -824,11 +824,11 @@ const COPY = {
       "Albo biały kruk, albo brudny kod.",
       "Unikat. Albo literówka w paskach."
     ],
-    get notFound() { return ["Nie znamy tej płyty.", pickFresh(this.notFoundLines), "Dodaj ręcznie"]; },
-    lookupError: ["Wyszukiwarka nie odpowiada.", "Baza płyt chwilowo milczy. Spróbuj za moment albo dodaj ręcznie.", "Dodaj ręcznie"],
+    get notFound() { return ["Nie znamy tej płyty.", pickFresh(this.notFoundLines), "Dodaj ręcznie, jak za dawnych lat"]; },
+    lookupError: ["Wyszukiwarka nie odpowiada.", "Baza płyt chwilowo milczy. Spróbuj za moment albo dodaj ręcznie.", "Dodaj ręcznie, jak za dawnych lat"],
     addOwned: "Dodaj do kolekcji",
     addWanted: "Dodaj do „Po wypłacie”",
-    notThis: "To nie ta. Popraw ręcznie",
+    notThis: "Prawie. Popraw ręcznie",
     labels: { artist: "Wykonawca", title: "Tytuł", code: "Kod", source: "źródło:", allEditions: "wszystkie wydania",
               edition: "Wydanie", label: "Wytwórnia", catno: "Nr katalogowy", format: "Format" }
   },
