@@ -4,6 +4,8 @@
 --
 -- Okładki są kopiowane do koszyka „covers”, każda w folderze właściciela:
 --   covers/<user_id>/<losowy-uuid>.jpg
+-- Limit 10 MB na plik; aplikacja i tak zmniejsza okładki do 800 px (zwykle 60–150 KB).
+-- Skrypt można uruchomić ponownie bez szkody (aktualizuje ustawienia koszyka).
 -- Obrazek da się otworzyć z linku (to okładka płyty, nic prywatnego; linki
 -- są losowe), ale dodawać i usuwać pliki może tylko właściciel folderu.
 -- =====================================================================
@@ -11,7 +13,7 @@
 begin;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('covers', 'covers', true, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+values ('covers', 'covers', true, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 on conflict (id) do update
   set public = excluded.public,
       file_size_limit = excluded.file_size_limit,

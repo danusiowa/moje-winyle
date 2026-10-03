@@ -9,7 +9,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = ["https://danusiowa.github.io"];
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;   // większe pliki odrzucamy; mniejsze aplikacja zmniejsza do 800 px
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 
 function cors(req: Request) {

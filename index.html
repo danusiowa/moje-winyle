@@ -807,12 +807,41 @@ async function ownCover(url) {
     const { data, error } = await db.functions.invoke("cover-copy", { body: { url } });
     if (error || !data?.url) throw error || new Error("no url");
     coverServiceDown = false;
-    return data.url;
+    return await shrinkCover(data.url);
   } catch (err) {
     console.warn("cover-copy", err);
-    coverServiceDown = ![400, 413, 415, 502].includes(err?.context?.status);
+    coverServiceDown = ![400, 413, 415, 502, 546].includes(err?.context?.status);
     return url;
   }
+}
+// Zmniejszanie w przeglądarce: dłuższy bok najwyżej 800 px (ostro także na ekranach retina),
+// JPEG ~85%. Typowa okładka po zmniejszeniu waży 60–150 KB. Mniejsze i lekkie obrazki zostają bez zmian.
+// Oryginał z magazynu jest usuwany, gdy zapisze się mniejsza wersja; przy błędzie zostaje oryginał.
+const COVER_MAX_PX = 800, COVER_MAX_BYTES = 400 * 1024;
+async function shrinkCover(url) {
+  if (!isOwnCover(url)) return url;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return url;
+    const blob = await r.blob();
+    const bmp = await createImageBitmap(blob);
+    const scale = Math.min(1, COVER_MAX_PX / Math.max(bmp.width, bmp.height));
+    if (scale === 1 && blob.size <= COVER_MAX_BYTES) return url;
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);   // przezroczyste PNG → białe tło
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.85));
+    if (!out || out.size >= blob.size) return url;
+    const folder = decodeURIComponent(url.slice(COVER_PREFIX.length)).split("/")[0];
+    const path = `${folder}/${crypto.randomUUID()}.jpg`;
+    const { error } = await db.storage.from("covers").upload(path, out, { contentType: "image/jpeg", cacheControl: "31536000" });
+    if (error) return url;
+    removeOwnCover(url);
+    return COVER_PREFIX + path;
+  } catch (err) { console.warn("shrinkCover", err); return url; }
 }
 function removeOwnCover(url) {
   if (!isOwnCover(url)) return;
