@@ -789,6 +789,50 @@ async function loadAlbums() {
   loadFailed = !!error;
   albums = error ? [] : (data || []);
   render();
+  if (!error) backfillCovers();
+}
+
+/* ---------- Własne kopie okładek (Supabase Storage, koszyk „covers”) ----------
+   Zapisujemy kopię okładki u siebie, żeby nie znikała, gdy źródło usunie obrazek.
+   Gdy kopiowanie się nie uda (brak funkcji, zły link, obrazek za duży), zostaje
+   oryginalny link — zapis płyty nigdy przez to nie przepada. */
+const COVER_PREFIX = CONFIG.SUPABASE_URL + "/storage/v1/object/public/covers/";
+const isOwnCover = (u) => !!u && u.startsWith(COVER_PREFIX);
+// coverServiceDown = true, gdy problem dotyczy samej usługi (brak funkcji/koszyka, sieć),
+// a nie konkretnego obrazka (zły link, nie-obrazek, za duży, źródło nie oddało pliku).
+let coverServiceDown = false;
+async function ownCover(url) {
+  if (!url || isOwnCover(url)) return url || null;
+  try {
+    const { data, error } = await db.functions.invoke("cover-copy", { body: { url } });
+    if (error || !data?.url) throw error || new Error("no url");
+    coverServiceDown = false;
+    return data.url;
+  } catch (err) {
+    console.warn("cover-copy", err);
+    coverServiceDown = ![400, 413, 415, 502].includes(err?.context?.status);
+    return url;
+  }
+}
+function removeOwnCover(url) {
+  if (!isOwnCover(url)) return;
+  db.storage.from("covers").remove([decodeURIComponent(url.slice(COVER_PREFIX.length))]).catch(() => {});
+}
+// Jednorazowo w tle: przenosimy do magazynu okładki płyt dodanych wcześniej.
+let backfillRunning = false;
+async function backfillCovers() {
+  if (backfillRunning) return;
+  backfillRunning = true;
+  let changed = false;
+  for (const a of albums.filter(x => x.image_url && !isOwnCover(x.image_url))) {
+    const url = await ownCover(a.image_url);
+    if (url === a.image_url) { if (coverServiceDown) break; continue; }   // usługa niedostępna → spróbujemy przy następnym wejściu
+    const { error } = await db.from("albums").update({ image_url: url }).eq("id", a.id);
+    if (error) { removeOwnCover(url); continue; }
+    a.image_url = url; changed = true;
+  }
+  backfillRunning = false;
+  if (changed) render();
 }
 
 function setView(v, doRender = true) {
@@ -943,8 +987,13 @@ $("albumForm").addEventListener("submit", async (e) => {
   if (payload.image_url && !safeUrl(payload.image_url)) { $("formError").textContent = COPY.form.badUrl; return; }
   if (editing) {
     delete payload.barcode; delete payload.source_url; delete payload.master_url;
-    const { error } = await withLoader(COPY.loader.save, () => db.from("albums").update(payload).eq("id", editing.id));
-    if (error) { toast("error", COPY.toast.saveError); return; }
+    const oldCover = editing.image_url, coverChanged = payload.image_url !== oldCover;
+    const { error } = await withLoader(COPY.loader.save, async () => {
+      if (coverChanged) payload.image_url = await ownCover(payload.image_url);
+      return db.from("albums").update(payload).eq("id", editing.id);
+    });
+    if (error) { if (coverChanged) removeOwnCover(payload.image_url); toast("error", COPY.toast.saveError); return; }
+    if (coverChanged) removeOwnCover(oldCover);
     Object.assign(editing, payload); $("albumDialog").close(); render(); toast("success", COPY.toast.updated);
     return;
   }
@@ -970,8 +1019,11 @@ async function addAlbum(payload, { fromForm = false } = {}) {
     toast("dup", [t, x]);
     return false;
   }
-  const { data, error } = await withLoader(COPY.loader.save, () => db.from("albums").insert(payload).select().single());
-  if (error) { toast("error", COPY.toast.saveError); return false; }
+  const { data, error } = await withLoader(COPY.loader.save, async () => {
+    payload = { ...payload, image_url: await ownCover(payload.image_url) };
+    return db.from("albums").insert(payload).select().single();
+  });
+  if (error) { removeOwnCover(payload.image_url); toast("error", COPY.toast.saveError); return false; }
   albums.unshift(data); closeAllAdd(); setView(payload.status);
   toast(payload.status === "owned" ? "success" : "wanted", payload.status === "owned" ? COPY.toast.addedOwned : COPY.toast.addedWanted);
   return true;
@@ -996,6 +1048,7 @@ $("deleteBtn").addEventListener("click", async () => {
   if (!ok) return;
   const { error } = await withLoader(COPY.loader.remove, () => db.from("albums").delete().eq("id", a.id));
   if (error) { toast("error", COPY.toast.deleteError); return; }
+  removeOwnCover(a.image_url);
   albums = albums.filter(x => x.id !== a.id); $("albumDialog").close(); render(); toast("deleted", COPY.toast.deleted);
 });
 
