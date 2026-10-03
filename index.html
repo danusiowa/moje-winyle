@@ -741,8 +741,21 @@ const COPY = {
       "Egzemplarzy: {n}. Tego tłoczenia nikt ci już nie odbierze."
     ],
     copiesUpdated: ["Zmieniono liczbę egzemplarzy", "Inwentaryzacja zakończona. Wynik: niepokojący."],
-    updated: [["Zapisano zmiany", "Udawajmy, że od początku tak było."]],
-    deleted: [["Usunięto płytę", "Rozsądek pojawił się z imponującym opóźnieniem."]],
+    updated: [
+      "Udawajmy, że od początku tak było.",
+      "Historia napisana na nowo. Jak w każdym remasterze.",
+      "Poprawione. Nikt nie musi wiedzieć.",
+      "Drobna korekta, wielka ulga.",
+      "Wszystko na swoim miejscu. Oprócz budżetu."
+    ].map(t => ["Zapisano zmiany", t]),
+    deleted: [
+      "Rozsądek pojawił się z imponującym opóźnieniem.",
+      "Półka odetchnęła z ulgą.",
+      "Jedna mniej. Nikt nie zauważy. Oprócz ciebie.",
+      "Miejsce się zwolniło. Wiadomo, na co.",
+      "Usunięto. Sumienie czyste, kolekcja lżejsza.",
+      "Zniknęła. Jak pensja w dniu premiery."
+    ].map(t => ["Usunięto płytę", t]),
     duplicate: ["To już masz.", "Ale wiadomo — ten egzemplarz jest zupełnie inny."],
     duplicateWanted: ["To już jest na liście.", "Powtarzanie życzenia nie przyspiesza wypłaty."],
     saveError: ["Nie udało się zapisać", "Serwer powiedział „nie”. Rzadka asertywność w tym projekcie."],
@@ -773,7 +786,15 @@ const COPY = {
   },
   confirmDelete: {
     title: "Usunąć tę płytę?",
-    text: (a) => `${a.title}, ${a.artist}. Ona ci nic nie zrobiła.`,
+    lines: [
+      "Ona ci nic nie zrobiła.",
+      "Na pewno? Ona jeszcze pamięta twój pierwszy odsłuch.",
+      "Pomyśl o wszystkich wspólnych obrotach.",
+      "Ostatnie słowo przed rozstaniem?",
+      "Ta płyta ufała ci bezgranicznie.",
+      "Serio? Właśnie ta?"
+    ],
+    text: (a) => `${a.title}, ${a.artist}. ${pickFresh(COPY.confirmDelete.lines)}`,
     yes: "Usuń", no: "Zostaw"
   },
   scan: {
